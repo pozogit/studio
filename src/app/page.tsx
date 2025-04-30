@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -7,6 +8,7 @@ import { Toaster } from "@/components/ui/toaster"
 import type { Shift } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
+import { CalendarClock } from 'lucide-react'; // Import an icon for the logo placeholder
 
 
 export default function Home() {
@@ -29,9 +31,13 @@ export default function Home() {
   return (
     <main className="container mx-auto p-4 md:p-8">
        <header className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-4xl font-bold text-primary mb-2">ShiftMaster</h1>
-          <p className="text-lg text-muted-foreground">Organiza y visualiza los horarios de trabajo de tu equipo de forma eficiente.</p>
+        <div className="flex items-center space-x-3">
+           {/* Placeholder Logo */}
+           <CalendarClock className="h-10 w-10 text-primary" />
+           <div>
+            <h1 className="text-4xl font-bold text-primary mb-1">ShiftMaster</h1>
+            <p className="text-lg text-muted-foreground">Organiza y visualiza los horarios de trabajo de tu equipo de forma eficiente.</p>
+          </div>
         </div>
         <ThemeToggle /> {/* Add the theme toggle button */}
       </header>
