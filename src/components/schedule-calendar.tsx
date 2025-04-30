@@ -2,9 +2,10 @@
 "use client"
 
 import * as React from "react"
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval, addMonths, subMonths, getDay, startOfWeek, endOfWeek } from "date-fns"
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval, addMonths, subMonths, getDay, startOfWeek, endOfWeek, getMonth } from "date-fns"
 import { es } from 'date-fns/locale' // Import Spanish locale
-import { ChevronLeft, ChevronRight, User, Building2, Filter, X, Clock } from "lucide-react"
+import { ChevronLeft, ChevronRight, User, Building2, Filter, X, Clock, FileSpreadsheet } from "lucide-react"
+import * as XLSX from 'xlsx'; // Import xlsx library
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -161,13 +162,48 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
       }
     };
 
+   // Function to handle exporting data to Excel
+    const handleExportExcel = () => {
+        // 1. Filter shifts for the current month based on display filters
+        const shiftsForCurrentMonth = filteredShiftsForDisplay.filter(
+            shift => getMonth(shift.date) === getMonth(currentMonth) &&
+                     shift.date.getFullYear() === currentMonth.getFullYear()
+        );
+
+        // 2. Prepare data for Excel (map to desired format)
+        const dataForExcel = shiftsForCurrentMonth
+            .sort((a, b) => a.date.getTime() - b.date.getTime() || (a.startTime || "").localeCompare(b.startTime || "")) // Sort by date then time
+            .map(shift => ({
+                Fecha: format(shift.date, 'yyyy-MM-dd'), // Format date as YYYY-MM-DD
+                Trabajador: shift.worker,
+                Área: shift.area,
+                'Hora Inicio': shift.startTime,
+                'Hora Fin': shift.endTime,
+            }));
+
+        // 3. Create worksheet and workbook
+        const ws = XLSX.utils.json_to_sheet(dataForExcel);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Horario"); // Name the sheet "Horario"
+
+        // 4. Generate filename
+        const fileName = `shiftmaster_horario_${format(currentMonth, "yyyy-MM", { locale: es })}.xlsx`;
+
+        // 5. Trigger download
+        XLSX.writeFile(wb, fileName);
+    };
+
+
   return (
     <TooltipProvider>
       <Card className="shadow-lg">
-        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0 pb-4">
-          <CardTitle className="text-2xl font-bold text-primary">
-            {format(currentMonth, "MMMM yyyy", { locale: es })}
-          </CardTitle>
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 pb-4">
+         <div className="flex flex-col space-y-1">
+             <CardTitle className="text-2xl font-bold text-primary">
+                {format(currentMonth, "MMMM yyyy", { locale: es })}
+            </CardTitle>
+             <span className="text-sm text-muted-foreground">Vista de calendario</span>
+         </div>
            <div className="flex flex-wrap items-center gap-2">
              <Select value={filterType} onValueChange={(value) => { setFilterType(value as any); setFilterValue(''); }}>
               <SelectTrigger className="w-full md:w-auto">
@@ -183,18 +219,50 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
             {renderFilterInput()}
              {/* Show clear button only if a filter type is selected and a specific value (not 'All') is chosen */}
              {filterType !== 'none' && filterValue && (
-              <Button variant="ghost" size="icon" onClick={clearFilter} aria-label="Limpiar filtro">
-                <X className="h-4 w-4" />
-              </Button>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={clearFilter} aria-label="Limpiar filtro">
+                        <X className="h-4 w-4" />
+                      </Button>
+                  </TooltipTrigger>
+                   <TooltipContent>
+                    <p>Limpiar filtro</p>
+                  </TooltipContent>
+                </Tooltip>
             )}
             <div className="flex items-center space-x-1">
-                <Button variant="outline" size="icon" onClick={handlePrevMonth} aria-label="Mes anterior">
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleNextMonth} aria-label="Mes siguiente">
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
+                <Tooltip delayDuration={100}>
+                  <TooltipTrigger asChild>
+                      <Button variant="outline" size="icon" onClick={handlePrevMonth} aria-label="Mes anterior">
+                          <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                   </TooltipTrigger>
+                   <TooltipContent>
+                    <p>Mes anterior</p>
+                  </TooltipContent>
+                </Tooltip>
+                 <Tooltip delayDuration={100}>
+                   <TooltipTrigger asChild>
+                     <Button variant="outline" size="icon" onClick={handleNextMonth} aria-label="Mes siguiente">
+                          <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                     <p>Mes siguiente</p>
+                    </TooltipContent>
+                 </Tooltip>
             </div>
+             {/* Export Button */}
+            <Tooltip delayDuration={100}>
+                <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" onClick={handleExportExcel} aria-label="Exportar a Excel">
+                        <FileSpreadsheet className="h-4 w-4" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>Exportar mes actual a Excel</p>
+                </TooltipContent>
+            </Tooltip>
           </div>
         </CardHeader>
         <CardContent>
