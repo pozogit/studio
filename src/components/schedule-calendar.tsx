@@ -4,7 +4,7 @@
 import * as React from "react"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval, addMonths, subMonths, getDay, startOfWeek, endOfWeek } from "date-fns"
 import { es } from 'date-fns/locale' // Import Spanish locale
-import { ChevronLeft, ChevronRight, User, Building2, Filter, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, User, Building2, Filter, X, Clock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getAreaIcon } from "@/lib/types";
 import { ShiftDetailsModal } from "@/components/shift-details-modal"; // Import the modal component
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
 
 interface ScheduleCalendarProps {
   shifts: Shift[];
@@ -53,8 +55,12 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
   }, [shifts, filterType, filterValue]);
 
   const getShiftsForDay = (day: Date) => {
-    return filteredShifts.filter(shift => isSameDay(shift.date, day));
+    // Sort shifts by start time within the day
+    return filteredShifts
+        .filter(shift => isSameDay(shift.date, day))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }
+
 
   const handleDayClick = (day: Date) => {
     const dayShifts = getShiftsForDay(day);
@@ -65,8 +71,9 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
     }
   };
 
-  const uniqueWorkers = React.useMemo(() => [...new Set(shifts.map(s => s.worker))], [shifts]);
-  const uniqueAreas = React.useMemo(() => [...new Set(shifts.map(s => s.area))], [shifts]);
+  const uniqueWorkers = React.useMemo(() => [...new Set(shifts.map(s => s.worker))].sort(), [shifts]);
+  const uniqueAreas = React.useMemo(() => [...new Set(shifts.map(s => s.area))].sort(), [shifts]);
+
 
   const renderFilterInput = () => {
     if (filterType === "worker") {
@@ -110,7 +117,7 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
   }
 
   return (
-    <>
+    <TooltipProvider>
       <Card className="shadow-lg">
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0 pb-4">
           <CardTitle className="text-2xl font-bold text-primary">
@@ -157,28 +164,42 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
                 <div
                   key={index}
                   onClick={() => isCurrentMonth && handleDayClick(day)} // Make day clickable only if in current month
-                  className={`relative border rounded-md p-2 min-h-[100px] transition-colors duration-300 ease-in-out ${
+                  className={`relative border rounded-md p-2 min-h-[120px] transition-colors duration-200 ease-in-out flex flex-col ${ /* Increased min-height slightly */
                     isCurrentMonth ? 'bg-card hover:bg-secondary/80 cursor-pointer' : 'bg-muted/50 text-muted-foreground'
                   } ${isSameDay(day, new Date()) ? 'ring-2 ring-primary' : ''}`}
                   aria-label={`Día ${format(day, 'd')}, ${dayShifts.length} turnos`} // Accessibility
                 >
                   <div className={`font-medium text-sm mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/70'}`}>{format(day, "d")}</div>
                   {dayShifts.length > 0 && isCurrentMonth && ( // Only show shifts if in current month
-                    <ScrollArea className="h-[60px] mt-1">
+                    <ScrollArea className="flex-grow mt-1"> {/* Use flex-grow for scroll area */}
                        <div className="space-y-1 text-xs">
                         {dayShifts.map(shift => {
                            const SpecificAreaIcon = getAreaIcon(shift.area);
+                           const tooltipContent = `${shift.worker} (${shift.startTime}-${shift.endTime}) en ${shift.area}`;
                            return (
-                            <Badge key={shift.id} variant="secondary" className="flex items-center justify-start w-full text-left p-1 truncate shadow-sm">
-                                <SpecificAreaIcon className="h-3 w-3 mr-1 shrink-0" />
-                                <span className="font-semibold mr-1">{shift.worker}:</span>
-                                <span className="truncate">{shift.area}</span>
-                              </Badge>
+                             <Tooltip key={shift.id} delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="secondary"
+                                  className="flex items-center justify-start w-full text-left p-1 truncate shadow-sm cursor-default" // Added cursor-default
+                                >
+                                  <SpecificAreaIcon className="h-3 w-3 mr-1 shrink-0" />
+                                  <span className="font-semibold mr-1 truncate">{shift.worker}:</span>
+                                  <span className="text-muted-foreground">{shift.startTime}</span>
+                                  {/* Optional: Display Area/End time if space allows or on hover */}
+                                  {/* <span className="truncate ml-1">{shift.area}</span> */}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{tooltipContent}</p>
+                              </TooltipContent>
+                            </Tooltip>
                             );
                          })}
                       </div>
                      </ScrollArea>
                   )}
+                   {!isCurrentMonth && <div className="flex-grow"></div>} {/* Ensure non-month days fill space */}
                 </div>
               );
             })}
@@ -195,7 +216,7 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
           date={selectedDay}
         />
       )}
-    </>
+      </TooltipProvider>
   )
 }
 

@@ -4,7 +4,7 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
-import { User, Building2, CalendarDays } from "lucide-react";
+import { User, Building2, CalendarDays, Clock } from "lucide-react";
 
 import {
   Dialog,
@@ -30,34 +30,41 @@ interface ShiftDetailsModalProps {
 export function ShiftDetailsModal({ isOpen, onClose, shifts, date }: ShiftDetailsModalProps) {
   if (!isOpen) return null;
 
+  // Sort shifts by start time for better readability
+  const sortedShifts = [...shifts].sort((a, b) => a.startTime.localeCompare(b.startTime));
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[480px]"> {/* Increased width slightly */}
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <CalendarDays className="mr-2 h-5 w-5 text-primary" />
+          <DialogTitle className="flex items-center text-primary">
+            <CalendarDays className="mr-2 h-5 w-5" />
             Turnos para {format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
           </DialogTitle>
           <DialogDescription>
             Detalles de los turnos registrados para este día.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] p-1">
+        <ScrollArea className="max-h-[60vh] p-1 pr-3"> {/* Added padding-right */}
           <div className="space-y-4 py-4">
-            {shifts.length > 0 ? (
-              shifts.map((shift) => {
+            {sortedShifts.length > 0 ? (
+              sortedShifts.map((shift) => {
                 const SpecificAreaIcon = getAreaIcon(shift.area);
                 return (
-                  <div key={shift.id} className="flex items-start space-x-3 p-3 border rounded-md shadow-sm bg-secondary/50">
-                    <SpecificAreaIcon className="h-5 w-5 mt-1 text-primary shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold flex items-center">
-                        <User className="mr-1 h-4 w-4 text-muted-foreground" />
+                  <div key={shift.id} className="flex items-start space-x-3 p-3 border rounded-lg shadow-sm bg-card hover:bg-secondary/50 transition-colors">
+                    <SpecificAreaIcon className="h-6 w-6 mt-1 text-primary shrink-0" />
+                    <div className="flex-1 grid grid-cols-1 gap-1">
+                      <p className="text-base font-semibold flex items-center">
+                        <User className="mr-2 h-4 w-4 text-muted-foreground" />
                         {shift.worker}
                       </p>
                       <p className="text-sm text-muted-foreground flex items-center">
-                        <Building2 className="mr-1 h-4 w-4 text-muted-foreground" />
+                        <Building2 className="mr-2 h-4 w-4" />
                         {shift.area}
+                      </p>
+                      <p className="text-sm text-muted-foreground flex items-center">
+                        <Clock className="mr-2 h-4 w-4" />
+                        {shift.startTime} - {shift.endTime}
                       </p>
                     </div>
                   </div>
