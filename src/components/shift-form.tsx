@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format, eachDayOfInterval } from "date-fns";
-import { User, Building2, Clock } from "lucide-react";
+import { User, Building2, Clock, MessageSquare } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 
 
@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import { DateRangePicker } from "@/components/date-range-picker"; // Import the new component
 import { toast } from "@/hooks/use-toast";
 import type { Shift } from "@/lib/types";
@@ -46,6 +47,7 @@ const formSchema = z.object({
   endTime: z.string().regex(timeRegex, {
     message: "Invalid end time format (HH:MM).",
   }),
+  comments: z.string().optional(), // Add optional comments field
 }).refine(data => data.dateRange.from <= data.dateRange.to, {
   message: "End date cannot be before start date.",
   path: ["dateRange"], // Attach error to the date range field
@@ -75,11 +77,12 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
       dateRange: undefined,
       startTime: "", // Initialize time fields
       endTime: "",
+      comments: "", // Initialize comments field
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const { dateRange, worker, area, startTime, endTime } = values;
+    const { dateRange, worker, area, startTime, endTime, comments } = values;
 
     if (!dateRange.from || !dateRange.to) {
       toast({
@@ -104,6 +107,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           area,
           startTime,
           endTime,
+          comments: comments || undefined, // Assign comments, ensure it's undefined if empty
        };
        addShift(newShift);
        shiftsAddedCount++;
@@ -205,6 +209,27 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               )}
             />
          </div>
+
+        <FormField
+          control={form.control}
+          name="comments"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center">
+                <MessageSquare className="mr-2 h-4 w-4" /> Comments (Optional)
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Add any relevant comments about the shift(s)"
+                  className="resize-none" // Prevent resizing if desired
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <Button type="submit" className="w-full">
           Register Shifts

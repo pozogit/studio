@@ -4,7 +4,7 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
-import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X } from "lucide-react";
+import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X, MessageSquare } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -25,6 +25,7 @@ import { getAreaIcon } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import { toast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -56,6 +57,7 @@ const editShiftSchema = z.object({
   endTime: z.string().regex(timeRegex, {
     message: "Invalid end time format (HH:MM).",
   }),
+  comments: z.string().optional(), // Add optional comments field
 }).refine(data => {
     // Basic time comparison: Ensure end time is after start time on the same day
     if (data.startTime && data.endTime && timeRegex.test(data.startTime) && timeRegex.test(data.endTime)) {
@@ -97,6 +99,7 @@ export function ShiftDetailsModal({
       area: "",
       startTime: "",
       endTime: "",
+      comments: "", // Initialize comments
     },
   });
 
@@ -107,6 +110,7 @@ export function ShiftDetailsModal({
       area: shift.area,
       startTime: shift.startTime,
       endTime: shift.endTime,
+      comments: shift.comments || "", // Set comments, default to empty string if undefined
     });
   };
 
@@ -118,7 +122,7 @@ export function ShiftDetailsModal({
  const handleSaveEdit = (shiftId: string) => {
     form.handleSubmit((data: EditShiftFormData) => {
       const updatedAllShifts = allShifts.map(s =>
-        s.id === shiftId ? { ...s, ...data } : s
+        s.id === shiftId ? { ...s, ...data, comments: data.comments || undefined } : s // Update comments, ensure undefined if empty
       );
       onUpdateShifts(updatedAllShifts); // Update the parent state
       setEditingShiftId(null); // Exit edit mode
@@ -201,6 +205,13 @@ export function ShiftDetailsModal({
                                   ? `(No start time) - ${shift.endTime}`
                                   : '(Time not specified)'}
                           </p>
+                           {/* Display Comments */}
+                           {shift.comments && (
+                              <p className="text-sm text-muted-foreground flex items-start pt-1"> {/* Use items-start for alignment */}
+                                <MessageSquare className="mr-2 h-4 w-4 mt-0.5 shrink-0" /> {/* Adjust icon alignment */}
+                                <span className="whitespace-pre-wrap">{shift.comments}</span> {/* Allow line breaks */}
+                              </p>
+                           )}
                         </div>
                         {/* Action buttons - show on hover */}
                         <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -267,6 +278,15 @@ export function ShiftDetailsModal({
                                 {form.formState.errors.endTime && <p className="text-xs text-destructive mt-1">{form.formState.errors.endTime.message}</p>}
                              </div>
                         </div>
+                         {/* Edit Comments Field */}
+                        <div>
+                            <Label htmlFor={`comments-${shift.id}`} className="text-xs font-medium flex items-center mb-1">
+                                <MessageSquare className="mr-1 h-3 w-3" /> Comments (Optional)
+                            </Label>
+                            <Textarea id={`comments-${shift.id}`} {...form.register("comments")} placeholder="Add comments" className="h-20 text-sm resize-none" />
+                            {form.formState.errors.comments && <p className="text-xs text-destructive mt-1">{form.formState.errors.comments.message}</p>}
+                        </div>
+
                         <div className="flex justify-end space-x-2 pt-2">
                             <Button type="button" variant="ghost" size="sm" onClick={handleCancelEdit}>
                                 <X className="mr-1 h-4 w-4" /> Cancel

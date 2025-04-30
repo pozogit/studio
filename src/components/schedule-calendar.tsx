@@ -4,7 +4,7 @@
 import * as React from "react"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval, addMonths, subMonths, getDay, startOfWeek, endOfWeek, getMonth } from "date-fns"
 import { es } from 'date-fns/locale' // Import Spanish locale
-import { ChevronLeft, ChevronRight, User, Building2, Filter, X, Clock, FileSpreadsheet } from "lucide-react"
+import { ChevronLeft, ChevronRight, User, Building2, Filter, X, Clock, FileSpreadsheet, MessageSquare } from "lucide-react" // Added MessageSquare
 import * as XLSX from 'xlsx'; // Import xlsx library
 
 import { Button } from "@/components/ui/button"
@@ -179,6 +179,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                 Área: shift.area,
                 'Hora Inicio': shift.startTime,
                 'Hora Fin': shift.endTime,
+                Comentarios: shift.comments || '', // Add comments field
             }));
 
         // 3. Create worksheet and workbook
@@ -291,7 +292,17 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                        <div className="space-y-1 text-xs">
                         {dayShiftsDisplay.map(shift => {
                            const SpecificAreaIcon = getAreaIcon(shift.area);
-                           const tooltipContent = `${shift.worker} (${shift.startTime || 'N/A'}-${shift.endTime || 'N/A'}) en ${shift.area}`;
+                           // Improved tooltip content generation
+                           let tooltipLines = [
+                             `${shift.worker} (${shift.startTime || 'N/A'}-${shift.endTime || 'N/A'}) en ${shift.area}`
+                           ];
+                           if (shift.comments) {
+                             // Add comments, truncate if too long for a simple tooltip line
+                             const truncatedComment = shift.comments.length > 50 ? shift.comments.substring(0, 47) + '...' : shift.comments;
+                             tooltipLines.push(`Comentarios: ${truncatedComment}`);
+                           }
+                           const tooltipContent = tooltipLines.join('\n'); // Join lines with newline
+
                            return (
                              <Tooltip key={shift.id} delayDuration={300}>
                               <TooltipTrigger asChild>
@@ -302,9 +313,10 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                                   <SpecificAreaIcon className="h-3 w-3 mr-1 shrink-0" />
                                   <span className="font-semibold mr-1 truncate">{shift.worker}:</span>
                                   <span className="text-muted-foreground">{shift.startTime || '?'}</span>
+                                   {shift.comments && <MessageSquare className="h-3 w-3 ml-1 shrink-0 text-blue-400" />} {/* Icon for comments */}
                                 </Badge>
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className="whitespace-pre-line max-w-xs"> {/* Allow wrapping and set max width */}
                                 <p>{tooltipContent}</p>
                               </TooltipContent>
                             </Tooltip>

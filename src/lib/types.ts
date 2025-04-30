@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-// Updated Shift interface to include start and end times
+// Updated Shift interface to include start and end times and comments
 export interface Shift {
   id: string;
   date: Date; // Each shift object represents a single day
@@ -8,6 +8,7 @@ export interface Shift {
   area: string;
   startTime: string; // e.g., "09:00"
   endTime: string;   // e.g., "17:00"
+  comments?: string; // Optional field for comments
 }
 
 // Example Area Icons - you can expand this
