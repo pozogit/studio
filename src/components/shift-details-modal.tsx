@@ -4,7 +4,7 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
-import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X, MessageSquare } from "lucide-react";
+import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X, MessageSquare, AlertCircle } from "lucide-react"; // Added AlertCircle
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 import { allAreas, areaWorkerMap } from "@/lib/data"; // Import data
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"; // Import Form components
 
 
 // Time validation regex (HH:MM format)
@@ -48,16 +49,16 @@ const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 // Zod schema for editing a single shift
 const editShiftSchema = z.object({
   worker: z.string().min(1, { // Changed validation to min 1 as it's a selection
-    message: "Please select a worker.",
+    message: "Por favor seleccione un trabajador.",
   }),
   area: z.string().min(1, { // Changed validation to min 1 as it's a selection
-    message: "Please select an area.",
+    message: "Por favor seleccione un área.",
   }),
   startTime: z.string().regex(timeRegex, {
-    message: "Invalid start time format (HH:MM).",
+    message: "Formato de hora de inicio inválido (HH:MM).",
   }),
   endTime: z.string().regex(timeRegex, {
-    message: "Invalid end time format (HH:MM).",
+    message: "Formato de hora de fin inválido (HH:MM).",
   }),
   comments: z.string().optional(),
 }).refine(data => {
@@ -66,7 +67,7 @@ const editShiftSchema = z.object({
     }
     return true;
 }, {
-    message: "End time must be after start time.",
+    message: "La hora de fin debe ser posterior a la hora de inicio.",
     path: ["endTime"],
 });
 
@@ -76,24 +77,29 @@ type EditShiftFormData = z.infer<typeof editShiftSchema>;
 interface ShiftDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  shifts: Shift[];
-  allShifts: Shift[];
+  shifts: Shift[]; // These are the shifts filtered for the day and potentially by worker/area
+  allShifts: Shift[]; // The complete list of all shifts for updating/deleting
   date: Date;
-  onUpdateShifts: (updatedShifts: Shift[]) => void;
-  onDeleteShift: (shiftId: string) => void;
+  onUpdateShifts: (updatedShifts: Shift[]) => void; // Callback operates on the *full* list
+  onDeleteShift: (shiftId: string) => void; // Callback operates on the *full* list
 }
 
 export function ShiftDetailsModal({
   isOpen,
   onClose,
-  shifts,
-  allShifts,
+  shifts, // Filtered shifts to display
+  allShifts, // Full list for backend operations
   date,
   onUpdateShifts,
   onDeleteShift
 }: ShiftDetailsModalProps) {
   const [editingShiftId, setEditingShiftId] = React.useState<string | null>(null);
   const [availableWorkersEdit, setAvailableWorkersEdit] = React.useState<string[]>([]);
+
+  // Find the total number of shifts for this day from the unfiltered list
+  const totalShiftsForDay = React.useMemo(() => {
+    return allShifts.filter(s => format(s.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).length;
+  }, [allShifts, date]);
 
   const form = useForm<EditShiftFormData>({
     resolver: zodResolver(editShiftSchema),
@@ -114,8 +120,6 @@ export function ShiftDetailsModal({
     if (editingShiftId && selectedAreaEdit) { // Only run when editing and area is selected
       const workers = areaWorkerMap[selectedAreaEdit] || [];
       setAvailableWorkersEdit(workers.sort());
-      // Check if the current worker is still valid for the new area
-      // If not, reset the worker field (optional, depends on desired behavior)
       const currentWorker = form.getValues("worker");
       if (!workers.includes(currentWorker)) {
          form.setValue('worker', '', { shouldValidate: true }); // Reset and validate
@@ -130,7 +134,6 @@ export function ShiftDetailsModal({
 
   const handleEditClick = (shift: Shift) => {
     setEditingShiftId(shift.id);
-    // Pre-populate the workers list based on the initial area of the shift being edited
     const initialWorkers = areaWorkerMap[shift.area] || [];
     setAvailableWorkersEdit(initialWorkers.sort());
     form.reset({
@@ -150,30 +153,39 @@ export function ShiftDetailsModal({
 
  const handleSaveEdit = (shiftId: string) => {
     form.handleSubmit((data: EditShiftFormData) => {
+      // IMPORTANT: Update based on the `allShifts` list
       const updatedAllShifts = allShifts.map(s =>
-        s.id === shiftId ? { ...s, ...data, comments: data.comments || undefined } : s
+        s.id === shiftId ? { ...s, ...data, date: new Date(date), comments: data.comments || undefined } : s // Ensure date is correct, update comments
       );
-      onUpdateShifts(updatedAllShifts);
+      onUpdateShifts(updatedAllShifts); // Pass the fully updated list back
       setEditingShiftId(null);
       setAvailableWorkersEdit([]); // Clear workers list
       toast({
-        title: "Shift Updated",
-        description: `Shift for ${data.worker} on ${format(date, "PPP", { locale: es })} updated.`,
+        title: "Turno Actualizado",
+        description: `Turno para ${data.worker} el ${format(date, "PPP", { locale: es })} actualizado.`,
         variant: "default",
       });
     })().catch(err => {
          console.error("Validation failed:", err);
+         // Optionally show validation errors in toast
+         toast({
+            title: "Error de Validación",
+            description: "Por favor revise los campos del formulario.",
+            variant: "destructive",
+         })
      });
  };
 
 
    const handleDeleteConfirm = (shiftId: string) => {
+       // IMPORTANT: Find shift in the *displayed* list for the toast message,
+       // but call onDeleteShift with the ID, which operates on the `allShifts` list.
        const shiftToDelete = shifts.find(s => s.id === shiftId);
        onDeleteShift(shiftId);
         if (shiftToDelete) {
              toast({
-                title: "Shift Deleted",
-                description: `Shift for ${shiftToDelete.worker} on ${format(date, "PPP", { locale: es })} deleted.`,
+                title: "Turno Eliminado",
+                description: `Turno para ${shiftToDelete.worker} el ${format(date, "PPP", { locale: es })} eliminado.`,
                 variant: "default",
             });
         }
@@ -181,6 +193,7 @@ export function ShiftDetailsModal({
 
   if (!isOpen) return null;
 
+  // Sort the *displayed* (potentially filtered) shifts
   const sortedShifts = [...shifts].sort((a, b) => {
     if (!a.startTime && !b.startTime) return 0;
     if (!a.startTime) return -1;
@@ -188,8 +201,10 @@ export function ShiftDetailsModal({
     return a.startTime.localeCompare(b.startTime);
   });
 
+  const isFiltered = shifts.length < totalShiftsForDay;
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {if (!open) handleCancelEdit(); onClose();}}> {/* Ensure cancel edit on close */}
+    <Dialog open={isOpen} onOpenChange={(open) => {if (!open) handleCancelEdit(); onClose();}}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center text-primary">
@@ -197,7 +212,8 @@ export function ShiftDetailsModal({
             Turnos para {format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
           </DialogTitle>
           <DialogDescription>
-             {editingShiftId ? "Editando turno" : "Detalles de los turnos registrados para este día."}
+             {editingShiftId ? "Editando turno seleccionado." : `Mostrando ${shifts.length} de ${totalShiftsForDay} turnos para este día.`}
+             {isFiltered && !editingShiftId && <span className="text-xs text-muted-foreground"> (Filtro aplicado)</span>}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] p-1 pr-3">
@@ -225,10 +241,10 @@ export function ShiftDetailsModal({
                             {shift.startTime && shift.endTime
                               ? `${shift.startTime} - ${shift.endTime}`
                               : shift.startTime
-                                ? `${shift.startTime} - (No end time)`
+                                ? `${shift.startTime} - (Sin hora fin)`
                                 : shift.endTime
-                                  ? `(No start time) - ${shift.endTime}`
-                                  : '(Time not specified)'}
+                                  ? `(Sin hora inicio) - ${shift.endTime}`
+                                  : '(Hora no especificada)'}
                           </p>
                            {shift.comments && (
                               <p className="text-sm text-muted-foreground flex items-start pt-1">
@@ -266,103 +282,141 @@ export function ShiftDetailsModal({
                         </div>
                      </>
                     ) : (
-                      // Edit Form
-                      <form onSubmit={(e) => { e.preventDefault(); handleSaveEdit(shift.id); }} className="w-full space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {/* Area Select (Edit) */}
-                            <div>
-                              <Label htmlFor={`area-${shift.id}`} className="text-xs font-medium flex items-center mb-1">
-                                <Building2 className="mr-1 h-3 w-3" /> Area
-                              </Label>
-                              <Select
-                                onValueChange={(value) => form.setValue('area', value, { shouldValidate: true })}
-                                value={form.getValues('area')}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-9 text-sm">
-                                    <SelectValue placeholder="Select an area" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {allAreas.map(areaName => (
-                                    <SelectItem key={areaName} value={areaName}>
-                                      {areaName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {form.formState.errors.area && <p className="text-xs text-destructive mt-1">{form.formState.errors.area.message}</p>}
-                            </div>
-                            {/* Worker Select (Edit) */}
-                            <div>
-                              <Label htmlFor={`worker-${shift.id}`} className="text-xs font-medium flex items-center mb-1">
-                                <User className="mr-1 h-3 w-3" /> Worker
-                              </Label>
-                              <Select
-                                onValueChange={(value) => form.setValue('worker', value, { shouldValidate: true })}
-                                value={form.getValues('worker')}
-                                disabled={!selectedAreaEdit || availableWorkersEdit.length === 0}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-9 text-sm">
-                                    <SelectValue placeholder={!selectedAreaEdit ? "Select area first" : "Select a worker"} />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {availableWorkersEdit.length > 0 ? (
-                                    availableWorkersEdit.map(workerName => (
-                                      <SelectItem key={workerName} value={workerName}>
-                                        {workerName}
-                                      </SelectItem>
-                                    ))
-                                  ) : (
-                                     selectedAreaEdit && <SelectItem value="-" disabled>No workers for this area</SelectItem>
+                      // Edit Form using react-hook-form
+                      <Form {...form}>
+                         <form onSubmit={(e) => { e.preventDefault(); handleSaveEdit(shift.id); }} className="w-full space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <FormField
+                                  control={form.control}
+                                  name="area"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                        <Label className="text-xs font-medium flex items-center mb-1">
+                                            <Building2 className="mr-1 h-3 w-3" /> Área
+                                        </Label>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-9 text-sm">
+                                                    <SelectValue placeholder="Seleccionar un área" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {allAreas.map(areaName => (
+                                                    <SelectItem key={areaName} value={areaName}>
+                                                        {areaName}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
                                   )}
-                                </SelectContent>
-                              </Select>
-                              {form.formState.errors.worker && <p className="text-xs text-destructive mt-1">{form.formState.errors.worker.message}</p>}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name="worker"
+                                  render={({ field }) => (
+                                     <FormItem>
+                                        <Label className="text-xs font-medium flex items-center mb-1">
+                                            <User className="mr-1 h-3 w-3" /> Trabajador
+                                        </Label>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            value={field.value}
+                                            disabled={!selectedAreaEdit || availableWorkersEdit.length === 0}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="h-9 text-sm">
+                                                    <SelectValue placeholder={!selectedAreaEdit ? "Selecciona área primero" : "Seleccionar un trabajador"} />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {availableWorkersEdit.length > 0 ? (
+                                                    availableWorkersEdit.map(workerName => (
+                                                        <SelectItem key={workerName} value={workerName}>
+                                                            {workerName}
+                                                        </SelectItem>
+                                                    ))
+                                                ) : (
+                                                    selectedAreaEdit && <SelectItem value="-" disabled>No hay trabajadores para esta área</SelectItem>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                  )}
+                                />
                             </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <FormField
+                                  control={form.control}
+                                  name="startTime"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                        <Label className="text-xs font-medium flex items-center mb-1">
+                                            <Clock className="mr-1 h-3 w-3" /> Hora Inicio
+                                        </Label>
+                                        <FormControl>
+                                            <Input type="time" {...field} className="h-9 text-sm" />
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name="endTime"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                        <Label className="text-xs font-medium flex items-center mb-1">
+                                            <Clock className="mr-1 h-3 w-3" /> Hora Fin
+                                        </Label>
+                                        <FormControl>
+                                            <Input type="time" {...field} className="h-9 text-sm" />
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                  )}
+                                />
+                            </div>
+                             <FormField
+                                  control={form.control}
+                                  name="comments"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                        <Label className="text-xs font-medium flex items-center mb-1">
+                                            <MessageSquare className="mr-1 h-3 w-3" /> Comentarios (Opcional)
+                                        </Label>
+                                        <FormControl>
+                                            <Textarea placeholder="Añadir comentarios" {...field} className="h-20 text-sm resize-none" />
+                                        </FormControl>
+                                        <FormMessage className="text-xs" />
+                                    </FormItem>
+                                  )}
+                                />
 
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <Label htmlFor={`startTime-${shift.id}`} className="text-xs font-medium flex items-center mb-1">
-                                    <Clock className="mr-1 h-3 w-3" /> Start Time
-                                </Label>
-                                <Input id={`startTime-${shift.id}`} type="time" {...form.register("startTime")} className="h-9 text-sm" />
-                                {form.formState.errors.startTime && <p className="text-xs text-destructive mt-1">{form.formState.errors.startTime.message}</p>}
-                             </div>
-                             <div>
-                                <Label htmlFor={`endTime-${shift.id}`} className="text-xs font-medium flex items-center mb-1">
-                                    <Clock className="mr-1 h-3 w-3" /> End Time
-                                </Label>
-                                <Input id={`endTime-${shift.id}`} type="time" {...form.register("endTime")} className="h-9 text-sm" />
-                                {form.formState.errors.endTime && <p className="text-xs text-destructive mt-1">{form.formState.errors.endTime.message}</p>}
-                             </div>
-                        </div>
-                        <div>
-                            <Label htmlFor={`comments-${shift.id}`} className="text-xs font-medium flex items-center mb-1">
-                                <MessageSquare className="mr-1 h-3 w-3" /> Comments (Optional)
-                            </Label>
-                            <Textarea id={`comments-${shift.id}`} {...form.register("comments")} placeholder="Add comments" className="h-20 text-sm resize-none" />
-                            {form.formState.errors.comments && <p className="text-xs text-destructive mt-1">{form.formState.errors.comments.message}</p>}
-                        </div>
-
-                        <div className="flex justify-end space-x-2 pt-2">
-                            <Button type="button" variant="ghost" size="sm" onClick={handleCancelEdit}>
-                                <X className="mr-1 h-4 w-4" /> Cancel
-                            </Button>
-                            <Button type="submit" variant="default" size="sm">
-                                <Save className="mr-1 h-4 w-4" /> Save
-                            </Button>
-                         </div>
-                      </form>
+                            <div className="flex justify-end space-x-2 pt-2">
+                                <Button type="button" variant="ghost" size="sm" onClick={handleCancelEdit}>
+                                    <X className="mr-1 h-4 w-4" /> Cancelar
+                                </Button>
+                                <Button type="submit" variant="default" size="sm">
+                                    <Save className="mr-1 h-4 w-4" /> Guardar
+                                </Button>
+                            </div>
+                        </form>
+                       </Form>
                     )}
                   </div>
                 );
               })
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">No hay turnos registrados para este día.</p>
+               // Show message indicating either no shifts or shifts filtered out
+                <p className="text-sm text-muted-foreground text-center py-4 flex items-center justify-center gap-2">
+                  <AlertCircle className="h-4 w-4"/>
+                  {totalShiftsForDay > 0 && isFiltered
+                    ? "No hay turnos que coincidan con el filtro actual para este día."
+                    : "No hay turnos registrados para este día."}
+                </p>
             )}
           </div>
         </ScrollArea>
@@ -375,3 +429,4 @@ export function ShiftDetailsModal({
     </Dialog>
   );
 }
+

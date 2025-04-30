@@ -72,11 +72,12 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
 
 
   const handleDayClick = (day: Date) => {
-    // Get shifts for the clicked day from the *complete* list for the modal
-    const dayShiftsAll = getShiftsForDay(day, allShifts);
-    if (dayShiftsAll.length > 0) {
+    // Get shifts for the clicked day using the *filtered* list for the modal
+    const dayShiftsFiltered = getShiftsForDay(day, filteredShiftsForDisplay);
+    // Only open the modal if there are shifts matching the current filter for that day
+    if (dayShiftsFiltered.length > 0) {
       setSelectedDay(day);
-      setSelectedShifts(dayShiftsAll); // Modal shows all shifts for the day
+      setSelectedShifts(dayShiftsFiltered); // Modal shows filtered shifts for the day
       setIsModalOpen(true);
     }
   };
@@ -154,9 +155,11 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
       setShifts(remainingShifts); // Update the parent state
       // Update selected shifts for the modal if it's still open for that day
       if (selectedDay) {
-        const updatedDayShifts = getShiftsForDay(selectedDay, remainingShifts);
+        // Re-filter the remaining shifts to update the modal content accurately
+        const remainingFilteredShifts = filteredShiftsForDisplay.filter(shift => shift.id !== shiftId);
+        const updatedDayShifts = getShiftsForDay(selectedDay, remainingFilteredShifts);
         setSelectedShifts(updatedDayShifts);
-        // Close modal if no shifts remain for the selected day
+        // Close modal if no *filtered* shifts remain for the selected day
         if (updatedDayShifts.length === 0) {
           setIsModalOpen(false);
           setSelectedDay(null);
@@ -277,6 +280,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
               // Get shifts for the day using the *filtered* list for display
               const dayShiftsDisplay = getShiftsForDay(day, filteredShiftsForDisplay);
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
+              const totalShiftsForDay = getShiftsForDay(day, allShifts).length; // Get total shifts for aria-label
 
               return (
                 <div
@@ -284,8 +288,9 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                   onClick={() => isCurrentMonth && handleDayClick(day)} // Make day clickable only if in current month
                   className={`relative border rounded-md p-2 min-h-[120px] transition-colors duration-200 ease-in-out flex flex-col ${ /* Increased min-height slightly */
                     isCurrentMonth ? 'bg-card hover:bg-secondary/80 cursor-pointer' : 'bg-muted/50 text-muted-foreground'
-                  } ${isSameDay(day, new Date()) ? 'ring-2 ring-primary' : ''}`}
-                  aria-label={`Día ${format(day, 'd')}, ${getShiftsForDay(day, allShifts).length} turnos`} // Accessibility label shows total shifts for the day
+                  } ${isSameDay(day, new Date()) ? 'ring-2 ring-primary' : ''} ${!isCurrentMonth || dayShiftsDisplay.length === 0 ? 'opacity-70' : ''}` /* Fade if no shifts match filter */}
+                  // Updated aria-label to show filtered count / total count
+                  aria-label={`Día ${format(day, 'd')}, ${dayShiftsDisplay.length}/${totalShiftsForDay} turnos (${filterType !== 'none' && filterValue ? `filtrado por ${filterType} '${filterValue}'` : 'sin filtro'})`}
                 >
                   <div className={`font-medium text-sm mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/70'}`}>{format(day, "d")}</div>
                   {/* Display shifts from the filtered list */}
@@ -328,6 +333,12 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                      </ScrollArea>
                   )}
                    {!isCurrentMonth && <div className="flex-grow"></div>} {/* Ensure non-month days fill space */}
+                   {/* Indicate visually if filters are active and hiding shifts */}
+                   {isCurrentMonth && totalShiftsForDay > 0 && dayShiftsDisplay.length === 0 && (
+                     <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground/50">
+                        (Filtro activo)
+                     </div>
+                   )}
                 </div>
               );
             })}
@@ -340,8 +351,8 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         <ShiftDetailsModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          shifts={selectedShifts} // Pass the shifts specifically for the selected day
-          allShifts={allShifts} // Pass the complete list of shifts
+          shifts={selectedShifts} // Pass the *filtered* shifts for the selected day
+          allShifts={allShifts} // Pass the complete list of shifts for update/delete operations
           date={selectedDay}
           onUpdateShifts={handleUpdateShifts} // Pass the update handler
           onDeleteShift={handleDeleteShift} // Pass the delete handler
