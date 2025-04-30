@@ -241,8 +241,8 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 pb-4">
          <div className="flex flex-col space-y-1">
              <CardTitle className="text-2xl font-bold text-primary">
-                {/* Convert month and year to uppercase */}
-                {format(currentMonth, "MMMM yyyy", { locale: es }).toUpperCase()}
+                {/* Use standard casing for month and year */}
+                {format(currentMonth, "MMMM yyyy", { locale: es })}
             </CardTitle>
              <span className="text-sm text-muted-foreground">Vista de calendario</span>
          </div>
@@ -400,4 +400,4 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
   )
 }
 
-    
+
