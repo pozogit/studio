@@ -71,9 +71,10 @@ const formSchema = z.object({
 
 interface ShiftFormProps {
   addShift: (shift: Shift) => void;
+  onFormSubmitSuccess?: () => void; // Optional callback for success
 }
 
-export function ShiftForm({ addShift }: ShiftFormProps) {
+export function ShiftForm({ addShift, onFormSubmitSuccess }: ShiftFormProps) {
   const [availableWorkers, setAvailableWorkers] = React.useState<string[]>([]);
   const { toast } = useToast(); // Get toast function
 
@@ -159,6 +160,9 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
     form.setValue('area', '');
     form.setValue('location', 'Oficina'); // Reset location back to default "Oficina"
     form.setValue('comments', '');
+
+    // Call the success callback to close the modal
+    onFormSubmitSuccess?.();
   }
 
   return (

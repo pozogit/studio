@@ -7,17 +7,31 @@ import { ScheduleCalendar } from "@/components/schedule-calendar";
 import { Toaster } from "@/components/ui/toaster"
 import type { Shift } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
-import { CalendarClock } from 'lucide-react'; // Import an icon for the logo placeholder
+import { ThemeToggle } from '@/components/theme-toggle';
+import { CalendarClock, PlusCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button'; // Import Button
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"; // Import Dialog components
 
 
 export default function Home() {
-  // Using React state for simplicity. Data will only persist for the current session.
+  // State for shifts
   const [shifts, setShifts] = React.useState<Shift[]>([]);
+  // State to control the shift form modal
+  const [isFormModalOpen, setIsFormModalOpen] = React.useState(false);
+
 
   // Function to add a new shift to the state
   const addShift = (newShift: Shift) => {
     setShifts((prevShifts) => [...prevShifts, newShift].sort((a, b) => a.date.getTime() - b.date.getTime() || (a.startTime || "").localeCompare(b.startTime || "")));
+    // Optionally close the modal after adding shift - handled by onFormSubmitSuccess prop now
+    // setIsFormModalOpen(false);
   };
 
   // Function to update the entire shifts array (used for editing/deleting)
@@ -26,7 +40,10 @@ export default function Home() {
    };
 
 
-   // LocalStorage persistence removed. Shifts will reset on page refresh.
+   // Callback to close the form modal on successful submission
+   const handleFormSuccess = () => {
+      setIsFormModalOpen(false);
+   }
 
   return (
     <main className="container mx-auto p-4 md:p-8">
@@ -42,29 +59,43 @@ export default function Home() {
         <ThemeToggle /> {/* Add the theme toggle button */}
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Shift Registration Section */}
-        <div className="lg:col-span-1">
-          <Card className="shadow-md">
-            <CardHeader>
-              <CardTitle>Registrar Nuevo Turno</CardTitle>
-              <CardDescription>Completa los detalles para añadir un nuevo turno de trabajo.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ShiftForm addShift={addShift} />
-            </CardContent>
-          </Card>
-        </div>
+       {/* Button to trigger the Shift Form Modal */}
+       <div className="mb-6 flex justify-end">
+         <Dialog open={isFormModalOpen} onOpenChange={setIsFormModalOpen}>
+            <DialogTrigger asChild>
+                 <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Registrar Nuevo Turno
+                 </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]"> {/* Adjusted width */}
+              <DialogHeader>
+                <DialogTitle>Registrar Nuevo Turno</DialogTitle>
+                <DialogDescription>
+                  Completa los detalles para añadir uno o más turnos de trabajo al calendario.
+                </DialogDescription>
+              </DialogHeader>
+               {/* Shift Form inside the Modal */}
+               {/* No need for Card component inside modal */}
+              <div className="py-4"> {/* Added padding */}
+                 <ShiftForm addShift={addShift} onFormSubmitSuccess={handleFormSuccess} />
+              </div>
+               {/* Footer can be added if needed, e.g., for a close button, but DialogClose is usually sufficient */}
+            </DialogContent>
+         </Dialog>
+       </div>
 
-        {/* Calendar View Section */}
-        <div className="lg:col-span-2">
+
+      {/* Calendar View Section - Takes full width now */}
+      <div>
            {/* Pass the full shifts list and the update function */}
           <ScheduleCalendar allShifts={shifts} setShifts={updateShifts} />
-        </div>
       </div>
+
 
       {/* Toaster for notifications */}
       <Toaster />
     </main>
   );
 }
+
