@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 // import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { cn } from "@/lib/utils";
+import { ThemeProvider } from "@/components/theme-provider"; // Import ThemeProvider
 
 // Removed geistSans assignment
 // const geistSans = GeistSans;
@@ -32,7 +33,14 @@ export default function RootLayout({
            // geistMono.variable
         )}
        >
-        {children}
+         <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
       </body>
     </html>
   );
