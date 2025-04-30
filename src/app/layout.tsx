@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 // const geistMono = GeistMono;
 
 export const metadata: Metadata = {
-  title: 'ShiftMaster - Schedule Management', // Updated title
-  description: 'Efficiently manage and visualize work shifts.', // Updated description
+  title: 'ShiftMaster - Schedule Management', // Already in English
+  description: 'Efficiently manage and visualize work shifts.', // Already in English
 };
 
 export default function RootLayout({
