@@ -167,7 +167,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
       }
     };
 
-   // Function to handle exporting data to Excel
+   // Function to handle exporting data to Excel with separate sheets per area
     const handleExportExcel = () => {
         // 1. Filter shifts for the current month based on display filters
         const shiftsForCurrentMonth = filteredShiftsForDisplay.filter(
@@ -175,28 +175,60 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                      shift.date.getFullYear() === currentMonth.getFullYear()
         );
 
-        // 2. Prepare data for Excel (map to desired format)
-        const dataForExcel = shiftsForCurrentMonth
-            .sort((a, b) => a.date.getTime() - b.date.getTime() || (a.startTime || "").localeCompare(b.startTime || "")) // Sort by date then time
-            .map(shift => ({
-                Fecha: format(shift.date, 'yyyy-MM-dd'), // Format date as YYYY-MM-DD
-                Trabajador: shift.worker,
-                Área: shift.area,
-                'Hora Inicio': shift.startTime,
-                'Hora Fin': shift.endTime,
-                Comentarios: shift.comments || '', // Add comments field
-            }));
+        if (shiftsForCurrentMonth.length === 0) {
+            toast({
+                title: "No hay datos",
+                description: "No hay turnos que exportar para el mes y filtro seleccionados.",
+                variant: "destructive",
+            });
+            return;
+        }
 
-        // 3. Create worksheet and workbook
-        const ws = XLSX.utils.json_to_sheet(dataForExcel);
+        // 2. Create a new workbook
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Horario"); // Name the sheet "Horario"
 
-        // 4. Generate filename
-        const fileName = `shiftmaster_horario_${format(currentMonth, "yyyy-MM", { locale: es })}.xlsx`;
+        // 3. Get unique areas present in the filtered shifts
+        const uniqueAreasInMonth = [...new Set(shiftsForCurrentMonth.map(shift => shift.area))].sort();
 
-        // 5. Trigger download
+        // 4. Create a sheet for each area
+        uniqueAreasInMonth.forEach(area => {
+            // Filter shifts for the current area
+            const shiftsForArea = shiftsForCurrentMonth.filter(shift => shift.area === area);
+
+            // Prepare data for this area's sheet
+            const dataForSheet = shiftsForArea
+                .sort((a, b) => a.date.getTime() - b.date.getTime() || (a.startTime || "").localeCompare(b.startTime || "")) // Sort by date then time
+                .map(shift => ({
+                    Fecha: format(shift.date, 'yyyy-MM-dd'),
+                    Trabajador: shift.worker,
+                    // Área: shift.area, // Area column might be redundant as it's the sheet name
+                    'Hora Inicio': shift.startTime,
+                    'Hora Fin': shift.endTime,
+                    Comentarios: shift.comments || '',
+                }));
+
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(dataForSheet);
+
+            // Clean area name for sheet name (optional, basic cleaning)
+            const sheetName = area.replace(/[/\\?*[\]]/g, '').substring(0, 31); // Max 31 chars, remove invalid chars
+
+            // Append worksheet to workbook with area name
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        });
+
+
+        // 5. Generate filename
+        const fileName = `shiftmaster_horario_${format(currentMonth, "yyyy-MM", { locale: es })}_por_area.xlsx`;
+
+        // 6. Trigger download
         XLSX.writeFile(wb, fileName);
+
+        toast({
+            title: "Exportación Exitosa",
+            description: `Horario exportado a ${fileName} con hojas separadas por área.`,
+            variant: "default",
+        });
     };
 
 
@@ -261,12 +293,12 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
              {/* Export Button */}
             <Tooltip delayDuration={100}>
                 <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={handleExportExcel} aria-label="Exportar a Excel">
+                    <Button variant="outline" size="icon" onClick={handleExportExcel} aria-label="Exportar a Excel por Área">
                         <FileSpreadsheet className="h-4 w-4" />
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>Exportar mes actual a Excel</p>
+                    <p>Exportar mes (por área)</p>
                 </TooltipContent>
             </Tooltip>
           </div>
