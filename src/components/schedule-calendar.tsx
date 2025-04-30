@@ -21,12 +21,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const ALL_FILTER_VALUE = "__ALL__";
 
 interface ScheduleCalendarProps {
-  shifts: Shift[];
+  allShifts: Shift[]; // Renamed from shifts to allShifts for clarity
+  setShifts: (shifts: Shift[]) => void; // Function to update the main shifts state
 }
 
 const dayNames = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá']; // Spanish day names
 
-export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
+export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
   const [filterType, setFilterType] = React.useState<"worker" | "area" | "none">("none")
   const [filterValue, setFilterValue] = React.useState<string>("") // Store the actual filter value, '' means no filter
@@ -41,12 +42,12 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1))
 
-  const filteredShifts = React.useMemo(() => {
+  const filteredShiftsForDisplay = React.useMemo(() => {
     // Filter based on filterValue, which is '' if 'All' is selected or no filter type
     if (!filterValue || filterType === "none") {
-      return shifts;
+      return allShifts;
     }
-    return shifts.filter(shift => {
+    return allShifts.filter(shift => {
       if (filterType === "worker") {
         // Exact match for worker filter (assuming select gives exact value)
         return shift.worker === filterValue;
@@ -57,27 +58,30 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
       }
       return true;
     });
-  }, [shifts, filterType, filterValue]);
+  }, [allShifts, filterType, filterValue]); // Depend on allShifts
 
-  const getShiftsForDay = (day: Date) => {
+  const getShiftsForDay = (day: Date, shiftsToFilter: Shift[]) => {
     // Sort shifts by start time within the day
-    return filteredShifts
+    return shiftsToFilter
         .filter(shift => isSameDay(shift.date, day))
         .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || "")); // Handle potentially null times
   }
 
 
   const handleDayClick = (day: Date) => {
-    const dayShifts = getShiftsForDay(day);
-    if (dayShifts.length > 0) {
+    // Get shifts for the clicked day from the *complete* list for the modal
+    const dayShiftsAll = getShiftsForDay(day, allShifts);
+    if (dayShiftsAll.length > 0) {
       setSelectedDay(day);
-      setSelectedShifts(dayShifts);
+      setSelectedShifts(dayShiftsAll); // Modal shows all shifts for the day
       setIsModalOpen(true);
     }
   };
 
-  const uniqueWorkers = React.useMemo(() => [...new Set(shifts.map(s => s.worker))].sort(), [shifts]);
-  const uniqueAreas = React.useMemo(() => [...new Set(shifts.map(s => s.area))].sort(), [shifts]);
+  // Unique workers/areas based on the complete list
+  const uniqueWorkers = React.useMemo(() => [...new Set(allShifts.map(s => s.worker))].sort(), [allShifts]);
+  const uniqueAreas = React.useMemo(() => [...new Set(allShifts.map(s => s.area))].sort(), [allShifts]);
+
 
   const handleFilterValueChange = (value: string) => {
     // If the special 'All' value is selected, reset filterValue to empty string
@@ -135,6 +139,28 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
     setFilterValue("");
   }
 
+  // Handler to update shifts (passed down to the modal)
+   const handleUpdateShifts = (updatedShifts: Shift[]) => {
+     setShifts(updatedShifts); // Update the parent state
+     setIsModalOpen(false); // Close modal after update
+   };
+
+   // Handler to delete a shift (passed down to the modal)
+   const handleDeleteShift = (shiftId: string) => {
+      const remainingShifts = allShifts.filter(shift => shift.id !== shiftId);
+      setShifts(remainingShifts); // Update the parent state
+      // Update selected shifts for the modal if it's still open for that day
+      if (selectedDay) {
+        const updatedDayShifts = getShiftsForDay(selectedDay, remainingShifts);
+        setSelectedShifts(updatedDayShifts);
+        // Close modal if no shifts remain for the selected day
+        if (updatedDayShifts.length === 0) {
+          setIsModalOpen(false);
+          setSelectedDay(null);
+        }
+      }
+    };
+
   return (
     <TooltipProvider>
       <Card className="shadow-lg">
@@ -177,7 +203,8 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
           </div>
           <div className="grid grid-cols-7 gap-1">
             {daysInMonth.map((day, index) => {
-              const dayShifts = getShiftsForDay(day);
+              // Get shifts for the day using the *filtered* list for display
+              const dayShiftsDisplay = getShiftsForDay(day, filteredShiftsForDisplay);
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
 
               return (
@@ -187,13 +214,14 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
                   className={`relative border rounded-md p-2 min-h-[120px] transition-colors duration-200 ease-in-out flex flex-col ${ /* Increased min-height slightly */
                     isCurrentMonth ? 'bg-card hover:bg-secondary/80 cursor-pointer' : 'bg-muted/50 text-muted-foreground'
                   } ${isSameDay(day, new Date()) ? 'ring-2 ring-primary' : ''}`}
-                  aria-label={`Día ${format(day, 'd')}, ${dayShifts.length} turnos`} // Accessibility
+                  aria-label={`Día ${format(day, 'd')}, ${getShiftsForDay(day, allShifts).length} turnos`} // Accessibility label shows total shifts for the day
                 >
                   <div className={`font-medium text-sm mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/70'}`}>{format(day, "d")}</div>
-                  {dayShifts.length > 0 && isCurrentMonth && ( // Only show shifts if in current month
+                  {/* Display shifts from the filtered list */}
+                  {dayShiftsDisplay.length > 0 && isCurrentMonth && (
                     <ScrollArea className="flex-grow mt-1"> {/* Use flex-grow for scroll area */}
                        <div className="space-y-1 text-xs">
-                        {dayShifts.map(shift => {
+                        {dayShiftsDisplay.map(shift => {
                            const SpecificAreaIcon = getAreaIcon(shift.area);
                            const tooltipContent = `${shift.worker} (${shift.startTime || 'N/A'}-${shift.endTime || 'N/A'}) en ${shift.area}`;
                            return (
@@ -206,8 +234,6 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
                                   <SpecificAreaIcon className="h-3 w-3 mr-1 shrink-0" />
                                   <span className="font-semibold mr-1 truncate">{shift.worker}:</span>
                                   <span className="text-muted-foreground">{shift.startTime || '?'}</span>
-                                  {/* Optional: Display Area/End time if space allows or on hover */}
-                                  {/* <span className="truncate ml-1">{shift.area}</span> */}
                                 </Badge>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -227,16 +253,18 @@ export function ScheduleCalendar({ shifts }: ScheduleCalendarProps) {
         </CardContent>
       </Card>
 
-      {/* Modal for displaying shift details */}
+      {/* Modal for displaying and editing shift details */}
       {selectedDay && (
         <ShiftDetailsModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          shifts={selectedShifts}
+          shifts={selectedShifts} // Pass the shifts specifically for the selected day
+          allShifts={allShifts} // Pass the complete list of shifts
           date={selectedDay}
+          onUpdateShifts={handleUpdateShifts} // Pass the update handler
+          onDeleteShift={handleDeleteShift} // Pass the delete handler
         />
       )}
       </TooltipProvider>
   )
 }
-
