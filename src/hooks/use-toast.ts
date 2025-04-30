@@ -1,3 +1,4 @@
+
 "use client"
 
 // Inspired by react-hot-toast library
@@ -11,11 +12,13 @@ import type {
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
 
+// Add variant to the toast type definition
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  variant?: 'default' | 'destructive' | 'success'; // Added variant property
 }
 
 const actionTypes = {
@@ -140,8 +143,10 @@ function dispatch(action: Action) {
   })
 }
 
+// Update Toast type to include the optional variant
 type Toast = Omit<ToasterToast, "id">
 
+// Update toast function signature to accept the new variant
 function toast({ ...props }: Toast) {
   const id = genId()
 
@@ -192,3 +197,4 @@ function useToast() {
 }
 
 export { useToast, toast }
+export type { ToasterToast }; // Export the updated type

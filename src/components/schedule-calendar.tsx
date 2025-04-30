@@ -181,7 +181,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
             toast({
                 title: "No hay datos",
                 description: "No hay turnos que exportar para el mes y filtro seleccionados.",
-                variant: "destructive",
+                variant: "destructive", // Use destructive variant for errors
             });
             return;
         }
@@ -229,7 +229,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         toast({
             title: "Exportación Exitosa",
             description: `Horario exportado a ${fileName} con hojas separadas por área.`,
-            variant: "default",
+            variant: "success", // Use success variant
         });
     };
 

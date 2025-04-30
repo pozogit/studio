@@ -163,7 +163,7 @@ export function ShiftDetailsModal({
       toast({
         title: "Turno Actualizado",
         description: `Turno para ${data.worker} el ${format(date, "PPP", { locale: es })} actualizado.`,
-        variant: "default",
+        variant: "success", // Use success variant
       });
     })().catch(err => {
          console.error("Validation failed:", err);
@@ -171,7 +171,7 @@ export function ShiftDetailsModal({
          toast({
             title: "Error de Validación",
             description: "Por favor revise los campos del formulario.",
-            variant: "destructive",
+            variant: "destructive", // Use destructive variant
          })
      });
  };
@@ -186,7 +186,7 @@ export function ShiftDetailsModal({
              toast({
                 title: "Turno Eliminado",
                 description: `Turno para ${shiftToDelete.worker} el ${format(date, "PPP", { locale: es })} eliminado.`,
-                variant: "default",
+                variant: "default", // Use default variant for neutral info
             });
         }
    };

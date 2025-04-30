@@ -108,7 +108,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
       toast({
           title: "Error",
           description: "Please select both a start and end date.",
-          variant: "destructive",
+          variant: "destructive", // Use destructive variant for errors
        });
       return;
     }
@@ -137,7 +137,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
     toast({
       title: "Shifts Added",
       description: `${shiftsAddedCount} shift(s) for ${worker} in ${area} from ${format(dateRange.from, 'PPP')} to ${format(dateRange.to, 'PPP')} (${startTime} - ${endTime}) registered.`,
-      variant: "default",
+      variant: "success", // Use success variant
     });
     form.reset();
     setAvailableWorkers([]); // Reset available workers on successful submit
