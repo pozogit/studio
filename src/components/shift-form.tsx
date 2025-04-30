@@ -39,16 +39,16 @@ const formSchema = z.object({
     }, { required_error: "Date range is required." }
   ),
   area: z.string().min(1, { // Area selection is required
-    message: "Please select an area.",
+    message: "Por favor selecciona un area.",
   }),
   worker: z.string().min(1, { // Worker selection is required
-    message: "Please select a worker.",
+    message: "Por favor selecciona un trabajador.",
   }),
   startTime: z.string().regex(timeRegex, {
-    message: "Invalid start time format (HH:MM).",
+    message: "Hora de Inicio posee un formato invalido (HH:MM).",
   }),
   endTime: z.string().regex(timeRegex, {
-    message: "Invalid end time format (HH:MM).",
+    message: "Hora Final posee un formato invalido (HH:MM).",
   }),
   location: z.enum(['Office', 'Remote'], { // Added location validation
     required_error: "Please select a location (Office or Remote).",
@@ -141,8 +141,8 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
 
 
     toast({
-      title: "Shifts Added",
-      description: `${shiftsAddedCount} shift(s) for ${worker} in ${area} (${location}) from ${format(dateRange.from, 'PPP')} to ${format(dateRange.to, 'PPP')} (${startTime} - ${endTime}) registered.`,
+      title: "Turno Añadido",
+      description: `${shiftsAddedCount} turno(s) para ${worker} de ${area} (${location}) desde ${format(dateRange.from, 'PPP')} hasta ${format(dateRange.to, 'PPP')} (${startTime} - ${endTime}) fue registrado.`,
       variant: "success", // Use success variant
     });
     form.reset();

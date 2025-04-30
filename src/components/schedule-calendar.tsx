@@ -29,7 +29,8 @@ interface ScheduleCalendarProps {
   setShifts: (shifts: Shift[]) => void; // Function to update the main shifts state
 }
 
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; // English day names
+// Changed order to start from Monday
+const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']; // Spanish day names starting Monday
 
 export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
@@ -40,8 +41,10 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const { toast } = useToast(); // Get the toast function
 
-  const start = startOfWeek(startOfMonth(currentMonth)/*, { locale: es }*/ ) // Removed locale
-  const end = endOfWeek(endOfMonth(currentMonth)/*, { locale: es }*/ ) // Removed locale
+  // Explicitly set weekStartsOn: 1 (Monday)
+  const weekStartsOn = 1;
+  const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn });
+  const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn });
   const daysInMonth = eachDayOfInterval({ start, end })
 
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
@@ -108,11 +111,11 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         <Select value={displayValue} onValueChange={handleFilterValueChange}>
           <SelectTrigger className="w-full md:w-[180px]">
              <User className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter by Worker" />
+            <SelectValue placeholder="Filtrar por Trabajador" />
           </SelectTrigger>
           <SelectContent>
              {/* Use the non-empty value for the 'All' option */}
-             <SelectItem value={ALL_FILTER_VALUE}>All</SelectItem>
+             <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
             {uniqueWorkers.map(worker => (
               <SelectItem key={worker} value={worker}>{worker}</SelectItem>
             ))}
@@ -125,11 +128,11 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         <Select value={displayValue} onValueChange={handleFilterValueChange}>
           <SelectTrigger className="w-full md:w-[180px]">
             <Building2 className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter by Area" />
+            <SelectValue placeholder="Filtrar por Area" />
           </SelectTrigger>
           <SelectContent>
              {/* Use the non-empty value for the 'All' option */}
-            <SelectItem value={ALL_FILTER_VALUE}>All</SelectItem>
+            <SelectItem value={ALL_FILTER_VALUE}>Todas</SelectItem>
             {uniqueAreas.map(area => (
               <SelectItem key={area} value={area}>{area}</SelectItem>
             ))}
@@ -179,8 +182,8 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
 
         if (shiftsForCurrentMonth.length === 0) {
             toast({
-                title: "No Data",
-                description: "There are no shifts to export for the selected month and filter.",
+                title: "Sin Datos",
+                description: "No hay turnos para exportar para el mes y filtro seleccionados.",
                 variant: "destructive", // Use destructive variant for errors
             });
             return;
@@ -201,13 +204,13 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
             const dataForSheet = shiftsForArea
                 .sort((a, b) => a.date.getTime() - b.date.getTime() || (a.startTime || "").localeCompare(b.startTime || "")) // Sort by date then time
                 .map(shift => ({
-                    Date: format(shift.date, 'yyyy-MM-dd'), // Keep consistent format
-                    Worker: shift.worker,
+                    Fecha: format(shift.date, 'yyyy-MM-dd'), // Keep consistent format
+                    Trabajador: shift.worker,
                     // Area: shift.area, // Area column might be redundant as it's the sheet name
-                    Location: shift.location, // Add Location column
-                    'Start Time': shift.startTime,
-                    'End Time': shift.endTime,
-                    Comments: shift.comments || '',
+                    Ubicacion: shift.location, // Add Location column
+                    'Hora Inicio': shift.startTime,
+                    'Hora Fin': shift.endTime,
+                    Comentarios: shift.comments || '',
                 }));
 
             // Create worksheet
@@ -222,14 +225,14 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
 
 
         // 5. Generate filename
-        const fileName = `shiftmaster_schedule_${format(currentMonth, "yyyy-MM")}_by_area.xlsx`; // Removed locale
+        const fileName = `shiftmaster_horario_${format(currentMonth, "yyyy-MM")}_por_area.xlsx`; // Removed locale
 
         // 6. Trigger download
         XLSX.writeFile(wb, fileName);
 
         toast({
-            title: "Export Successful",
-            description: `Schedule exported to ${fileName} with separate sheets per area.`,
+            title: "Exportación Exitosa",
+            description: `Horario exportado a ${fileName} con hojas separadas por área.`,
             variant: "success", // Use success variant
         });
     };
@@ -243,20 +246,20 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
              <CardTitle className="text-2xl font-bold text-primary">
                 {/* Use standard casing for month and year */}
                 {/* Capitalize first letter of month */}
-                {format(currentMonth, "MMMM yyyy") /* Removed locale */}
-            </CardTitle>
-             <span className="text-sm text-muted-foreground">Calendar View</span>
+                 {format(currentMonth, "MMMM yyyy").charAt(0).toUpperCase() + format(currentMonth, "MMMM yyyy").slice(1)}
+             </CardTitle>
+             <span className="text-sm text-muted-foreground">Vista Calendario</span>
          </div>
            <div className="flex flex-wrap items-center gap-2">
              <Select value={filterType} onValueChange={(value) => { setFilterType(value as any); setFilterValue(''); }}>
               <SelectTrigger className="w-full md:w-auto">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by..." />
+                <SelectValue placeholder="Filtrar por..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No Filter</SelectItem>
-                <SelectItem value="worker">Worker</SelectItem>
-                <SelectItem value="area">Area</SelectItem>
+                <SelectItem value="none">Sin Filtro</SelectItem>
+                <SelectItem value="worker">Trabajador</SelectItem>
+                <SelectItem value="area">Área</SelectItem>
               </SelectContent>
             </Select>
             {renderFilterInput()}
@@ -264,46 +267,46 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
              {filterType !== 'none' && filterValue && (
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={clearFilter} aria-label="Clear filter">
+                      <Button variant="ghost" size="icon" onClick={clearFilter} aria-label="Limpiar filtro">
                         <X className="h-4 w-4" />
                       </Button>
                   </TooltipTrigger>
                    <TooltipContent>
-                    <p>Clear filter</p>
+                    <p>Limpiar filtro</p>
                   </TooltipContent>
                 </Tooltip>
             )}
             <div className="flex items-center space-x-1">
                 <Tooltip delayDuration={100}>
                   <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={handlePrevMonth} aria-label="Previous month">
+                      <Button variant="outline" size="icon" onClick={handlePrevMonth} aria-label="Mes anterior">
                           <ChevronLeft className="h-4 w-4" />
                       </Button>
                    </TooltipTrigger>
                    <TooltipContent>
-                    <p>Previous month</p>
+                    <p>Mes anterior</p>
                   </TooltipContent>
                 </Tooltip>
                  <Tooltip delayDuration={100}>
                    <TooltipTrigger asChild>
-                     <Button variant="outline" size="icon" onClick={handleNextMonth} aria-label="Next month">
+                     <Button variant="outline" size="icon" onClick={handleNextMonth} aria-label="Mes siguiente">
                           <ChevronRight className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                     <p>Next month</p>
+                     <p>Mes siguiente</p>
                     </TooltipContent>
                  </Tooltip>
             </div>
              {/* Export Button */}
             <Tooltip delayDuration={100}>
                 <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={handleExportExcel} aria-label="Export to Excel by Area">
+                    <Button variant="outline" size="icon" onClick={handleExportExcel} aria-label="Exportar a Excel por Área">
                         <FileSpreadsheet className="h-4 w-4" />
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>Export month (by area)</p>
+                    <p>Exportar mes (por área)</p>
                 </TooltipContent>
             </Tooltip>
           </div>
@@ -327,7 +330,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                     isCurrentMonth ? 'bg-card hover:bg-secondary/80 cursor-pointer' : 'bg-muted/50 text-muted-foreground'
                   } ${isSameDay(day, new Date()) ? 'ring-2 ring-primary' : ''} ${!isCurrentMonth || dayShiftsDisplay.length === 0 ? 'opacity-70' : ''}` /* Fade if no shifts match filter */}
                   // Updated aria-label to show filtered count / total count
-                  aria-label={`Day ${format(day, 'd')}, ${dayShiftsDisplay.length}/${totalShiftsForDay} shifts (${filterType !== 'none' && filterValue ? `filtered by ${filterType} '${filterValue}'` : 'no filter'})`}
+                  aria-label={`Día ${format(day, 'd')}, ${dayShiftsDisplay.length}/${totalShiftsForDay} turnos (${filterType !== 'none' && filterValue ? `filtrado por ${filterType} '${filterValue}'` : 'sin filtro'})`}
                 >
                   <div className={`font-medium text-sm mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/70'}`}>{format(day, "d")}</div>
                   {/* Display shifts from the filtered list */}
@@ -338,13 +341,13 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                            const SpecificAreaIcon = getAreaIcon(shift.area);
                            // Improved tooltip content generation
                            let tooltipLines = [
-                             `${shift.worker} (${shift.startTime || 'N/A'}-${shift.endTime || 'N/A'}) in ${shift.area}`,
-                             `Location: ${shift.location || 'N/A'}`, // Add location to tooltip
+                             `${shift.worker} (${shift.startTime || 'N/A'}-${shift.endTime || 'N/A'}) en ${shift.area}`,
+                             `Ubicación: ${shift.location || 'N/A'}`, // Add location to tooltip
                            ];
                            if (shift.comments) {
                              // Add comments, truncate if too long for a simple tooltip line
                              const truncatedComment = shift.comments.length > 50 ? shift.comments.substring(0, 47) + '...' : shift.comments;
-                             tooltipLines.push(`Comments: ${truncatedComment}`);
+                             tooltipLines.push(`Comentarios: ${truncatedComment}`);
                            }
                            const tooltipContent = tooltipLines.join('\n'); // Join lines with newline
 
@@ -375,7 +378,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                    {/* Indicate visually if filters are active and hiding shifts */}
                    {isCurrentMonth && totalShiftsForDay > 0 && dayShiftsDisplay.length === 0 && (
                      <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground/50">
-                        (Filter active)
+                        (Filtro activo)
                      </div>
                    )}
                 </div>
@@ -400,3 +403,4 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
       </TooltipProvider>
   )
 }
+

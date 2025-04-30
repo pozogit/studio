@@ -1,8 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
+// import { es } from 'date-fns/locale'; // Import locale if needed
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -18,6 +20,8 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      // locale={es} // Use Spanish locale if desired
+      weekStartsOn={1} // Set week to start on Monday (0 is Sunday, 1 is Monday, etc.)
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -68,3 +72,4 @@ function Calendar({
 Calendar.displayName = "Calendar"
 
 export { Calendar }
+
