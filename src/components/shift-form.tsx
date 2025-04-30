@@ -88,7 +88,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
       },
       startTime: "",
       endTime: "",
-      location: undefined, // Default location to undefined initially
+      location: "Oficina", // Default location to "Oficina"
       comments: "",
     },
   });
@@ -157,7 +157,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
     form.setValue('dateRange', { from: undefined, to: undefined });
     form.setValue('worker', '');
     form.setValue('area', '');
-    form.setValue('location', undefined); // Reset location
+    form.setValue('location', 'Oficina'); // Reset location back to default "Oficina"
     form.setValue('comments', '');
   }
 
