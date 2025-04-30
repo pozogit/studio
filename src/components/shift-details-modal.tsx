@@ -30,8 +30,15 @@ interface ShiftDetailsModalProps {
 export function ShiftDetailsModal({ isOpen, onClose, shifts, date }: ShiftDetailsModalProps) {
   if (!isOpen) return null;
 
-  // Sort shifts by start time for better readability
-  const sortedShifts = [...shifts].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  // Sort shifts by start time for better readability, handling potentially undefined times
+  const sortedShifts = [...shifts].sort((a, b) => {
+    // Handle cases where startTime might be missing or null
+    if (!a.startTime && !b.startTime) return 0; // Both missing, treat as equal
+    if (!a.startTime) return -1; // a is missing, sort it first
+    if (!b.startTime) return 1;  // b is missing, sort it last (after a)
+    // Both exist, compare normally
+    return a.startTime.localeCompare(b.startTime);
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -64,7 +71,14 @@ export function ShiftDetailsModal({ isOpen, onClose, shifts, date }: ShiftDetail
                       </p>
                       <p className="text-sm text-muted-foreground flex items-center">
                         <Clock className="mr-2 h-4 w-4" />
-                        {shift.startTime} - {shift.endTime}
+                        {/* Display time range or indicate if missing */}
+                        {shift.startTime && shift.endTime
+                          ? `${shift.startTime} - ${shift.endTime}`
+                          : shift.startTime
+                            ? `${shift.startTime} - (No end time)`
+                            : shift.endTime
+                              ? `(No start time) - ${shift.endTime}`
+                              : '(Time not specified)'}
                       </p>
                     </div>
                   </div>
