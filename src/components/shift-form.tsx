@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format, eachDayOfInterval } from "date-fns";
-import { User, Building2, Clock, MessageSquare } from "lucide-react";
+import { User, Building2, Clock, MessageSquare, MapPin } from "lucide-react"; // Added MapPin
 import type { DateRange } from "react-day-picker";
 
 
@@ -26,6 +26,7 @@ import { DateRangePicker } from "@/components/date-range-picker";
 import { toast } from "@/hooks/use-toast";
 import type { Shift } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Import RadioGroup
 import { allAreas, areaWorkerMap } from "@/lib/data"; // Import data from the new file
 
 // Time validation regex (HH:MM format)
@@ -48,6 +49,9 @@ const formSchema = z.object({
   }),
   endTime: z.string().regex(timeRegex, {
     message: "Invalid end time format (HH:MM).",
+  }),
+  location: z.enum(['Office', 'Remote'], { // Added location validation
+    required_error: "Please select a location (Office or Remote).",
   }),
   comments: z.string().optional(),
 }).refine(data => data.dateRange.from <= data.dateRange.to, {
@@ -79,6 +83,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
       dateRange: undefined,
       startTime: "",
       endTime: "",
+      location: undefined, // Default location to undefined initially
       comments: "",
     },
   });
@@ -102,7 +107,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const { dateRange, worker, area, startTime, endTime, comments } = values;
+    const { dateRange, worker, area, startTime, endTime, location, comments } = values; // Include location
 
     if (!dateRange.from || !dateRange.to) {
       toast({
@@ -127,6 +132,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           area,
           startTime,
           endTime,
+          location, // Add location to the new shift object
           comments: comments || undefined,
        };
        addShift(newShift);
@@ -136,7 +142,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
 
     toast({
       title: "Shifts Added",
-      description: `${shiftsAddedCount} shift(s) for ${worker} in ${area} from ${format(dateRange.from, 'PPP')} to ${format(dateRange.to, 'PPP')} (${startTime} - ${endTime}) registered.`,
+      description: `${shiftsAddedCount} shift(s) for ${worker} in ${area} (${location}) from ${format(dateRange.from, 'PPP')} to ${format(dateRange.to, 'PPP')} (${startTime} - ${endTime}) registered.`,
       variant: "success", // Use success variant
     });
     form.reset();
@@ -144,6 +150,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
     form.setValue('dateRange', undefined);
     form.setValue('worker', '');
     form.setValue('area', '');
+    form.setValue('location', undefined); // Reset location
   }
 
   return (
@@ -266,6 +273,45 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               )}
             />
          </div>
+
+         {/* Location Selection (Office/Remote) */}
+        <FormField
+          control={form.control}
+          name="location"
+          render={({ field }) => (
+            <FormItem className="space-y-3">
+              <FormLabel className="flex items-center">
+                 <MapPin className="mr-2 h-4 w-4" /> Location
+              </FormLabel>
+              <FormControl>
+                <RadioGroup
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-4"
+                >
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="Office" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Office
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="Remote" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Remote
+                    </FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <FormField
           control={form.control}

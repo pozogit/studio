@@ -4,7 +4,7 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale';
-import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X, MessageSquare, AlertCircle } from "lucide-react"; // Added AlertCircle
+import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X, MessageSquare, AlertCircle, MapPin } from "lucide-react"; // Added MapPin
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -39,8 +39,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Import RadioGroup
 import { allAreas, areaWorkerMap } from "@/lib/data"; // Import data
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"; // Import Form components
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Import Form components
 
 
 // Time validation regex (HH:MM format)
@@ -59,6 +60,9 @@ const editShiftSchema = z.object({
   }),
   endTime: z.string().regex(timeRegex, {
     message: "Formato de hora de fin inválido (HH:MM).",
+  }),
+  location: z.enum(['Office', 'Remote'], { // Added location validation
+    required_error: "Por favor seleccione una ubicación.",
   }),
   comments: z.string().optional(),
 }).refine(data => {
@@ -108,6 +112,7 @@ export function ShiftDetailsModal({
       area: "",
       startTime: "",
       endTime: "",
+      location: "Office", // Default to Office, adjust if needed
       comments: "",
     },
   });
@@ -141,6 +146,7 @@ export function ShiftDetailsModal({
       area: shift.area,
       startTime: shift.startTime,
       endTime: shift.endTime,
+      location: shift.location || 'Office', // Use existing or default to Office
       comments: shift.comments || "",
     });
   };
@@ -235,6 +241,10 @@ export function ShiftDetailsModal({
                           <p className="text-sm text-muted-foreground flex items-center">
                             <Building2 className="mr-2 h-4 w-4" />
                             {shift.area}
+                          </p>
+                           <p className="text-sm text-muted-foreground flex items-center">
+                            <MapPin className="mr-2 h-4 w-4" />
+                            {shift.location || 'N/A'} {/* Display location */}
                           </p>
                           <p className="text-sm text-muted-foreground flex items-center">
                             <Clock className="mr-2 h-4 w-4" />
@@ -347,7 +357,7 @@ export function ShiftDetailsModal({
                                   )}
                                 />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <FormField
                                   control={form.control}
                                   name="startTime"
@@ -379,6 +389,43 @@ export function ShiftDetailsModal({
                                   )}
                                 />
                             </div>
+                             {/* Location Edit Field */}
+                              <FormField
+                                control={form.control}
+                                name="location"
+                                render={({ field }) => (
+                                  <FormItem className="space-y-2">
+                                    <Label className="text-xs font-medium flex items-center">
+                                      <MapPin className="mr-1 h-3 w-3" /> Ubicación
+                                    </Label>
+                                    <FormControl>
+                                      <RadioGroup
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                        className="flex space-x-4"
+                                      >
+                                        <FormItem className="flex items-center space-x-2 space-y-0">
+                                          <FormControl>
+                                            <RadioGroupItem value="Office" />
+                                          </FormControl>
+                                          <FormLabel className="font-normal text-sm">
+                                            Oficina
+                                          </FormLabel>
+                                        </FormItem>
+                                        <FormItem className="flex items-center space-x-2 space-y-0">
+                                          <FormControl>
+                                            <RadioGroupItem value="Remote" />
+                                          </FormControl>
+                                          <FormLabel className="font-normal text-sm">
+                                            Remoto
+                                          </FormLabel>
+                                        </FormItem>
+                                      </RadioGroup>
+                                    </FormControl>
+                                    <FormMessage className="text-xs" />
+                                  </FormItem>
+                                )}
+                              />
                              <FormField
                                   control={form.control}
                                   name="comments"
@@ -429,4 +476,3 @@ export function ShiftDetailsModal({
     </Dialog>
   );
 }
-
