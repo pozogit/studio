@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-// import { es } from 'date-fns/locale'; // Removed Spanish locale
-import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X, MessageSquare, AlertCircle, MapPin } from "lucide-react"; // Added MapPin
+import { es } from 'date-fns/locale'; // Import Spanish locale
+import { User, Building2, CalendarDays, Clock, Edit, Trash2, Save, X, MessageSquare, AlertCircle, MapPin, Mail } from "lucide-react"; // Added MapPin and Mail
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Import RadioGroup
-import { allAreas, areaWorkerMap } from "@/lib/data"; // Import data
+import { allAreas, areaWorkerMap, workersDetails } from "@/lib/data"; // Import data including worker details
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Import Form components
 
 
@@ -50,19 +50,19 @@ const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 // Zod schema for editing a single shift
 const editShiftSchema = z.object({
   worker: z.string().min(1, {
-    message: "Please select a worker.",
+    message: "Por favor selecciona un trabajador.",
   }),
   area: z.string().min(1, {
-    message: "Please select an area.",
+    message: "Por favor selecciona un área.",
   }),
   startTime: z.string().regex(timeRegex, {
-    message: "Invalid start time format (HH:MM).",
+    message: "Formato de hora de inicio inválido (HH:MM).",
   }),
   endTime: z.string().regex(timeRegex, {
-    message: "Invalid end time format (HH:MM).",
+    message: "Formato de hora de fin inválido (HH:MM).",
   }),
-  location: z.enum(['Office', 'Remote'], {
-    required_error: "Please select a location.",
+  location: z.enum(['Oficina', 'Remoto'], {
+    required_error: "Por favor selecciona una ubicación.",
   }),
   comments: z.string().optional(),
 }).refine(data => {
@@ -71,7 +71,7 @@ const editShiftSchema = z.object({
     }
     return true;
 }, {
-    message: "End time must be after start time.",
+    message: "La hora de fin debe ser posterior a la hora de inicio.",
     path: ["endTime"],
 });
 
@@ -112,7 +112,7 @@ export function ShiftDetailsModal({
       area: "",
       startTime: "",
       endTime: "",
-      location: "Office", // Default to Office, adjust if needed
+      location: "Oficina", // Default to Office, adjust if needed
       comments: "",
     },
   });
@@ -146,7 +146,7 @@ export function ShiftDetailsModal({
       area: shift.area,
       startTime: shift.startTime,
       endTime: shift.endTime,
-      location: shift.location || 'Office', // Use existing or default to Office
+      location: shift.location || 'Oficina', // Use existing or default to Office
       comments: shift.comments || "",
     });
   };
@@ -167,16 +167,16 @@ export function ShiftDetailsModal({
       setEditingShiftId(null);
       setAvailableWorkersEdit([]); // Clear workers list
       toast({
-        title: "Shift Updated",
-        description: `Shift for ${data.worker} on ${format(date, "PPP")} updated.`, // Removed locale
+        title: "Turno Actualizado",
+        description: `Turno para ${data.worker} el ${format(date, "PPP", { locale: es })} actualizado.`, // Use locale
         variant: "success", // Use success variant
       });
     })().catch(err => {
-         console.error("Validation failed:", err);
+         console.error("Validación fallida:", err);
          // Optionally show validation errors in toast
          toast({
-            title: "Validation Error",
-            description: "Please review the form fields.",
+            title: "Error de Validación",
+            description: "Por favor revisa los campos del formulario.",
             variant: "destructive", // Use destructive variant
          })
      });
@@ -190,8 +190,8 @@ export function ShiftDetailsModal({
        onDeleteShift(shiftId);
         if (shiftToDelete) {
              toast({
-                title: "Shift Deleted",
-                description: `Shift for ${shiftToDelete.worker} on ${format(date, "PPP")} deleted.`, // Removed locale
+                title: "Turno Eliminado",
+                description: `Turno para ${shiftToDelete.worker} el ${format(date, "PPP", { locale: es })} eliminado.`, // Use locale
                 variant: "default", // Use default variant for neutral info
             });
         }
@@ -215,11 +215,11 @@ export function ShiftDetailsModal({
         <DialogHeader>
           <DialogTitle className="flex items-center text-primary">
             <CalendarDays className="mr-2 h-5 w-5" />
-            Shifts for {format(date, "EEEE, MMMM d, yyyy")} {/* Removed locale */}
+            Turnos para {format(date, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })} {/* Use locale */}
           </DialogTitle>
           <DialogDescription>
-             {editingShiftId ? "Editing selected shift." : `Showing ${shifts.length} of ${totalShiftsForDay} shifts for this day.`}
-             {isFiltered && !editingShiftId && <span className="text-xs text-muted-foreground"> (Filter applied)</span>}
+             {editingShiftId ? "Editando el turno seleccionado." : `Mostrando ${shifts.length} de ${totalShiftsForDay} turnos para este día.`}
+             {isFiltered && !editingShiftId && <span className="text-xs text-muted-foreground"> (Filtro aplicado)</span>}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] p-1 pr-3">
@@ -228,6 +228,7 @@ export function ShiftDetailsModal({
               sortedShifts.map((shift) => {
                 const isEditing = editingShiftId === shift.id;
                 const SpecificAreaIcon = getAreaIcon(shift.area);
+                const workerEmail = workersDetails.get(shift.worker)?.email || null; // Get worker email
                 return (
                   <div key={shift.id} className="flex items-start space-x-3 p-3 border rounded-lg shadow-sm bg-card transition-colors relative group">
                    {!isEditing ? (
@@ -238,6 +239,13 @@ export function ShiftDetailsModal({
                             <User className="mr-2 h-4 w-4 text-muted-foreground" />
                             {shift.worker}
                           </p>
+                          {/* Display Email if available */}
+                          {workerEmail && (
+                             <p className="text-sm text-muted-foreground flex items-center">
+                              <Mail className="mr-2 h-4 w-4" />
+                              {workerEmail}
+                             </p>
+                          )}
                           <p className="text-sm text-muted-foreground flex items-center">
                             <Building2 className="mr-2 h-4 w-4" />
                             {shift.area}
@@ -251,10 +259,10 @@ export function ShiftDetailsModal({
                             {shift.startTime && shift.endTime
                               ? `${shift.startTime} - ${shift.endTime}`
                               : shift.startTime
-                                ? `${shift.startTime} - (No end time)`
+                                ? `${shift.startTime} - (Sin hora fin)`
                                 : shift.endTime
-                                  ? `(No start time) - ${shift.endTime}`
-                                  : '(Time not specified)'}
+                                  ? `(Sin hora inicio) - ${shift.endTime}`
+                                  : '(Hora no especificada)'}
                           </p>
                            {shift.comments && (
                               <p className="text-sm text-muted-foreground flex items-start pt-1">
@@ -264,26 +272,26 @@ export function ShiftDetailsModal({
                            )}
                         </div>
                         <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditClick(shift)} aria-label="Edit shift">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditClick(shift)} aria-label="Editar turno">
                                 <Edit className="h-4 w-4" />
                             </Button>
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" aria-label="Delete shift">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" aria-label="Eliminar turno">
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the shift for {shift.worker} in {shift.area} from {shift.startTime} to {shift.endTime}.
+                                        Esta acción no se puede deshacer. Esto eliminará permanentemente el turno para {shift.worker} en {shift.area} de {shift.startTime} a {shift.endTime}.
                                     </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                     <AlertDialogAction onClick={() => handleDeleteConfirm(shift.id)} className="bg-destructive hover:bg-destructive/90">
-                                        Delete
+                                        Eliminar
                                     </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -302,12 +310,12 @@ export function ShiftDetailsModal({
                                   render={({ field }) => (
                                     <FormItem>
                                         <Label className="text-xs font-medium flex items-center mb-1">
-                                            <Building2 className="mr-1 h-3 w-3" /> Area
+                                            <Building2 className="mr-1 h-3 w-3" /> Área
                                         </Label>
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger className="h-9 text-sm">
-                                                    <SelectValue placeholder="Select an area" />
+                                                    <SelectValue placeholder="Selecciona un área" />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
@@ -328,7 +336,7 @@ export function ShiftDetailsModal({
                                   render={({ field }) => (
                                      <FormItem>
                                         <Label className="text-xs font-medium flex items-center mb-1">
-                                            <User className="mr-1 h-3 w-3" /> Worker
+                                            <User className="mr-1 h-3 w-3" /> Trabajador
                                         </Label>
                                         <Select
                                             onValueChange={field.onChange}
@@ -337,7 +345,7 @@ export function ShiftDetailsModal({
                                         >
                                             <FormControl>
                                                 <SelectTrigger className="h-9 text-sm">
-                                                    <SelectValue placeholder={!selectedAreaEdit ? "Select area first" : "Select a worker"} />
+                                                    <SelectValue placeholder={!selectedAreaEdit ? "Selecciona área primero" : "Selecciona un trabajador"} />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
@@ -348,7 +356,7 @@ export function ShiftDetailsModal({
                                                         </SelectItem>
                                                     ))
                                                 ) : (
-                                                    selectedAreaEdit && <SelectItem value="-" disabled>No workers for this area</SelectItem>
+                                                    selectedAreaEdit && <SelectItem value="-" disabled>No hay trabajadores para esta área</SelectItem>
                                                 )}
                                             </SelectContent>
                                         </Select>
@@ -364,7 +372,7 @@ export function ShiftDetailsModal({
                                   render={({ field }) => (
                                     <FormItem>
                                         <Label className="text-xs font-medium flex items-center mb-1">
-                                            <Clock className="mr-1 h-3 w-3" /> Start Time
+                                            <Clock className="mr-1 h-3 w-3" /> Hora Inicio
                                         </Label>
                                         <FormControl>
                                             <Input type="time" {...field} className="h-9 text-sm" />
@@ -379,7 +387,7 @@ export function ShiftDetailsModal({
                                   render={({ field }) => (
                                     <FormItem>
                                         <Label className="text-xs font-medium flex items-center mb-1">
-                                            <Clock className="mr-1 h-3 w-3" /> End Time
+                                            <Clock className="mr-1 h-3 w-3" /> Hora Fin
                                         </Label>
                                         <FormControl>
                                             <Input type="time" {...field} className="h-9 text-sm" />
@@ -396,7 +404,7 @@ export function ShiftDetailsModal({
                                 render={({ field }) => (
                                   <FormItem className="space-y-2">
                                     <Label className="text-xs font-medium flex items-center">
-                                      <MapPin className="mr-1 h-3 w-3" /> Location
+                                      <MapPin className="mr-1 h-3 w-3" /> Ubicación
                                     </Label>
                                     <FormControl>
                                       <RadioGroup
@@ -406,18 +414,18 @@ export function ShiftDetailsModal({
                                       >
                                         <FormItem className="flex items-center space-x-2 space-y-0">
                                           <FormControl>
-                                            <RadioGroupItem value="Office" />
+                                            <RadioGroupItem value="Oficina" />
                                           </FormControl>
                                           <FormLabel className="font-normal text-sm">
-                                            Office
+                                            Oficina
                                           </FormLabel>
                                         </FormItem>
                                         <FormItem className="flex items-center space-x-2 space-y-0">
                                           <FormControl>
-                                            <RadioGroupItem value="Remote" />
+                                            <RadioGroupItem value="Remoto" />
                                           </FormControl>
                                           <FormLabel className="font-normal text-sm">
-                                            Remote
+                                            Remoto
                                           </FormLabel>
                                         </FormItem>
                                       </RadioGroup>
@@ -432,10 +440,10 @@ export function ShiftDetailsModal({
                                   render={({ field }) => (
                                     <FormItem>
                                         <Label className="text-xs font-medium flex items-center mb-1">
-                                            <MessageSquare className="mr-1 h-3 w-3" /> Comments (Optional)
+                                            <MessageSquare className="mr-1 h-3 w-3" /> Comentarios (Opcional)
                                         </Label>
                                         <FormControl>
-                                            <Textarea placeholder="Add comments" {...field} className="h-20 text-sm resize-none" />
+                                            <Textarea placeholder="Añadir comentarios" {...field} className="h-20 text-sm resize-none" />
                                         </FormControl>
                                         <FormMessage className="text-xs" />
                                     </FormItem>
@@ -444,10 +452,10 @@ export function ShiftDetailsModal({
 
                             <div className="flex justify-end space-x-2 pt-2">
                                 <Button type="button" variant="ghost" size="sm" onClick={handleCancelEdit}>
-                                    <X className="mr-1 h-4 w-4" /> Cancel
+                                    <X className="mr-1 h-4 w-4" /> Cancelar
                                 </Button>
                                 <Button type="submit" variant="default" size="sm">
-                                    <Save className="mr-1 h-4 w-4" /> Save
+                                    <Save className="mr-1 h-4 w-4" /> Guardar
                                 </Button>
                             </div>
                         </form>
@@ -461,15 +469,15 @@ export function ShiftDetailsModal({
                 <p className="text-sm text-muted-foreground text-center py-4 flex items-center justify-center gap-2">
                   <AlertCircle className="h-4 w-4"/>
                   {totalShiftsForDay > 0 && isFiltered
-                    ? "No shifts match the current filter for this day."
-                    : "No shifts registered for this day."}
+                    ? "Ningún turno coincide con el filtro actual para este día."
+                    : "No hay turnos registrados para este día."}
                 </p>
             )}
           </div>
         </ScrollArea>
         {!editingShiftId && (
             <DialogFooter>
-             <Button variant="outline" onClick={onClose}>Close</Button>
+             <Button variant="outline" onClick={onClose}>Cerrar</Button>
             </DialogFooter>
         )}
       </DialogContent>
