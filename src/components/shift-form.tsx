@@ -21,16 +21,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // Import Textarea
-import { DateRangePicker } from "@/components/date-range-picker"; // Import the new component
+import { Textarea } from "@/components/ui/textarea";
+import { DateRangePicker } from "@/components/date-range-picker";
 import { toast } from "@/hooks/use-toast";
 import type { Shift } from "@/lib/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
-
-// Default options
-const defaultWorkers = ["Alice Smith", "Bob Johnson", "Charlie Brown", "Diana Prince"];
-const defaultAreas = ["Office", "Factory", "Warehouse", "Support", "Remote"];
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { allAreas, areaWorkerMap } from "@/lib/data"; // Import data from the new file
 
 // Time validation regex (HH:MM format)
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -41,11 +37,11 @@ const formSchema = z.object({
       to: z.date({ required_error: "End date is required." }),
     }, { required_error: "Date range is required." }
   ),
-  worker: z.string().min(1, { // Changed min to 1 as it's now a selection
-    message: "Please select a worker.",
-  }),
-  area: z.string().min(1, { // Changed min to 1 as it's now a selection
+  area: z.string().min(1, { // Area selection is required
     message: "Please select an area.",
+  }),
+  worker: z.string().min(1, { // Worker selection is required
+    message: "Please select a worker.",
   }),
   startTime: z.string().regex(timeRegex, {
     message: "Invalid start time format (HH:MM).",
@@ -53,39 +49,57 @@ const formSchema = z.object({
   endTime: z.string().regex(timeRegex, {
     message: "Invalid end time format (HH:MM).",
   }),
-  comments: z.string().optional(), // Add optional comments field
+  comments: z.string().optional(),
 }).refine(data => data.dateRange.from <= data.dateRange.to, {
   message: "End date cannot be before start date.",
-  path: ["dateRange"], // Attach error to the date range field
+  path: ["dateRange"],
 }).refine(data => {
-    // Basic time comparison: Ensure end time is after start time on the same day
-    // More complex logic might be needed for overnight shifts spanning midnight
     if (data.startTime && data.endTime && timeRegex.test(data.startTime) && timeRegex.test(data.endTime)) {
         return data.startTime < data.endTime;
     }
-    return true; // Skip if formats are invalid (handled by regex)
+    return true;
 }, {
     message: "End time must be after start time.",
-    path: ["endTime"], // Attach error to the end time field
+    path: ["endTime"],
 });
 
 
 interface ShiftFormProps {
-  addShift: (shift: Shift) => void; // Keep this to add one shift at a time to parent state
+  addShift: (shift: Shift) => void;
 }
 
 export function ShiftForm({ addShift }: ShiftFormProps) {
+  const [availableWorkers, setAvailableWorkers] = React.useState<string[]>([]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      worker: "", // Initialize as empty, user must select
-      area: "",   // Initialize as empty, user must select
+      worker: "",
+      area: "",
       dateRange: undefined,
-      startTime: "", // Initialize time fields
+      startTime: "",
       endTime: "",
-      comments: "", // Initialize comments field
+      comments: "",
     },
   });
+
+  // Watch the 'area' field to react to changes
+  const selectedArea = form.watch("area");
+
+  // Effect to update available workers when the selected area changes
+  React.useEffect(() => {
+    if (selectedArea) {
+      const workers = areaWorkerMap[selectedArea] || [];
+      setAvailableWorkers(workers.sort());
+      // Reset worker selection when area changes
+      form.setValue('worker', '', { shouldValidate: false }); // Reset without immediate validation
+    } else {
+      setAvailableWorkers([]); // Clear workers if no area is selected
+      form.setValue('worker', '', { shouldValidate: false }); // Also clear worker selection
+    }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedArea]); // Rerun effect when selectedArea changes
+
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     const { dateRange, worker, area, startTime, endTime, comments } = values;
@@ -96,7 +110,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           description: "Please select both a start and end date.",
           variant: "destructive",
        });
-      return; // Should be caught by validation, but good practice
+      return;
     }
 
     const days = eachDayOfInterval({
@@ -107,13 +121,13 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
     let shiftsAddedCount = 0;
     days.forEach(day => {
        const newShift: Shift = {
-          id: crypto.randomUUID(), // Simple ID generation for client-side
-          date: day, // Assign the specific day from the range
+          id: crypto.randomUUID(),
+          date: day,
           worker,
           area,
           startTime,
           endTime,
-          comments: comments || undefined, // Assign comments, ensure it's undefined if empty
+          comments: comments || undefined,
        };
        addShift(newShift);
        shiftsAddedCount++;
@@ -125,12 +139,11 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
       description: `${shiftsAddedCount} shift(s) for ${worker} in ${area} from ${format(dateRange.from, 'PPP')} to ${format(dateRange.to, 'PPP')} (${startTime} - ${endTime}) registered.`,
       variant: "default",
     });
-    form.reset(); // Reset form after successful submission
-     // Manually reset date range as it's a complex object
-     form.setValue('dateRange', undefined);
-     // Reset worker and area selects
-     form.setValue('worker', '');
-     form.setValue('area', '');
+    form.reset();
+    setAvailableWorkers([]); // Reset available workers on successful submit
+    form.setValue('dateRange', undefined);
+    form.setValue('worker', '');
+    form.setValue('area', '');
   }
 
   return (
@@ -154,32 +167,8 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="worker"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center">
-                <User className="mr-2 h-4 w-4" /> Worker
-              </FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                  <FormControl>
-                      <SelectTrigger>
-                          <SelectValue placeholder="Select a worker" />
-                      </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                      {defaultWorkers.map(workerName => (
-                          <SelectItem key={workerName} value={workerName}>
-                              {workerName}
-                          </SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
+        {/* Area/Department Select */}
         <FormField
           control={form.control}
           name="area"
@@ -195,7 +184,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
                       </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                       {defaultAreas.map(areaName => (
+                       {allAreas.map(areaName => ( // Use allAreas from data.ts
                           <SelectItem key={areaName} value={areaName}>
                               {areaName}
                           </SelectItem>
@@ -206,6 +195,45 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
             </FormItem>
           )}
         />
+
+        {/* Worker Select - Options depend on selected area */}
+        <FormField
+          control={form.control}
+          name="worker"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center">
+                <User className="mr-2 h-4 w-4" /> Worker
+              </FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+                // Disable worker select if no area is chosen
+                disabled={!selectedArea || availableWorkers.length === 0}
+              >
+                  <FormControl>
+                      <SelectTrigger>
+                          <SelectValue placeholder={!selectedArea ? "Select an area first" : "Select a worker"} />
+                      </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                      {availableWorkers.length > 0 ? (
+                          availableWorkers.map(workerName => (
+                              <SelectItem key={workerName} value={workerName}>
+                                  {workerName}
+                              </SelectItem>
+                          ))
+                      ) : (
+                          // Optional: Display a message if no workers are available for the selected area
+                          selectedArea && <SelectItem value="-" disabled>No workers found for this area</SelectItem>
+                      )}
+                  </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -216,7 +244,6 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
                      <Clock className="mr-2 h-4 w-4" /> Start Time
                   </FormLabel>
                   <FormControl>
-                    {/* Consider using a dedicated time picker component if available/needed */}
                     <Input type="time" placeholder="HH:MM" {...field} />
                   </FormControl>
                   <FormMessage />
@@ -232,7 +259,6 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
                     <Clock className="mr-2 h-4 w-4" /> End Time
                   </FormLabel>
                   <FormControl>
-                     {/* Consider using a dedicated time picker component if available/needed */}
                     <Input type="time" placeholder="HH:MM" {...field} />
                   </FormControl>
                   <FormMessage />
@@ -252,7 +278,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               <FormControl>
                 <Textarea
                   placeholder="Add any relevant comments about the shift(s)"
-                  className="resize-none" // Prevent resizing if desired
+                  className="resize-none"
                   {...field}
                 />
               </FormControl>

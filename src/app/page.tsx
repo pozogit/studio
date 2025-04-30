@@ -7,7 +7,7 @@ import { ScheduleCalendar } from "@/components/schedule-calendar";
 import { Toaster } from "@/components/ui/toaster"
 import type { Shift } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+
 
 export default function Home() {
   // Using React state for simplicity. For larger apps, consider Zustand, Redux, or Context API.

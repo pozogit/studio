@@ -17,6 +17,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { getAreaIcon } from "@/lib/types";
 import { ShiftDetailsModal } from "@/components/shift-details-modal"; // Import the modal component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { allAreas, allWorkers } from "@/lib/data"; // Import default data for filters
+
 
 // Use a non-empty value for the 'all' option
 const ALL_FILTER_VALUE = "__ALL__";
@@ -79,9 +81,9 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
     }
   };
 
-  // Unique workers/areas based on the complete list
-  const uniqueWorkers = React.useMemo(() => [...new Set(allShifts.map(s => s.worker))].sort(), [allShifts]);
-  const uniqueAreas = React.useMemo(() => [...new Set(allShifts.map(s => s.area))].sort(), [allShifts]);
+  // Use unique workers/areas from the imported data for filters
+  const uniqueWorkers = allWorkers; // Already sorted in data.ts
+  const uniqueAreas = allAreas;   // Already sorted in data.ts
 
 
   const handleFilterValueChange = (value: string) => {

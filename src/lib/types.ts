@@ -11,35 +11,38 @@ export interface Shift {
   comments?: string; // Optional field for comments
 }
 
-// Example Area Icons - you can expand this
-// Ensure these icons exist in lucide-react
-export const areaIcons: { [key: string]: LucideIcon } = {
-  Office: require('lucide-react').Briefcase,
-  Factory: require('lucide-react').Factory,
-  Warehouse: require('lucide-react').Warehouse,
-  Store: require('lucide-react').Store,
-  Field: require('lucide-react').Tractor,
-  Remote: require('lucide-react').Laptop,
-  Kitchen: require('lucide-react').ChefHat, // Added example
-  Support: require('lucide-react').Headset, // Added example
-  Default: require('lucide-react').Building2, // Default icon
+
+// Mapping of area names (lowercase keys) to Lucide icons
+// Used by getAreaIcon function
+export const areaIconsMap: Record<string, LucideIcon> = {
+  office: require('lucide-react').Briefcase,
+  factory: require('lucide-react').Factory,
+  warehouse: require('lucide-react').Warehouse,
+  store: require('lucide-react').Store,
+  field: require('lucide-react').Tractor,
+  remote: require('lucide-react').Laptop,
+  kitchen: require('lucide-react').ChefHat,
+  support: require('lucide-react').Headset,
+  shop: require('lucide-react').Store, // Alias for store
+  farm: require('lucide-react').Tractor, // Alias for field
+  home: require('lucide-react').Laptop, // Alias for remote
+  'call center': require('lucide-react').Headset, // Alias for support
+  // Add more specific area names and their icons here
 };
 
+// Default icon if no specific match is found
+export const defaultAreaIcon: LucideIcon = require('lucide-react').Building2;
+
+// Function to get an icon based on area name
 export const getAreaIcon = (areaName: string): LucideIcon => {
-  // Simple matching logic, improve as needed
   const lowerAreaName = areaName.toLowerCase();
-  if (lowerAreaName.includes('office')) return areaIcons.Office;
-  if (lowerAreaName.includes('factory')) return areaIcons.Factory;
-  if (lowerAreaName.includes('warehouse')) return areaIcons.Warehouse;
-  if (lowerAreaName.includes('store') || lowerAreaName.includes('shop')) return areaIcons.Store;
-  if (lowerAreaName.includes('field') || lowerAreaName.includes('farm')) return areaIcons.Field;
-  if (lowerAreaName.includes('remote') || lowerAreaName.includes('home')) return areaIcons.Remote;
-  if (lowerAreaName.includes('kitchen') || lowerAreaName.includes('food')) return areaIcons.Kitchen;
-  if (lowerAreaName.includes('support') || lowerAreaName.includes('call center')) return areaIcons.Support;
 
-  // Check if a key directly matches
-  const exactMatch = Object.keys(areaIcons).find(key => key.toLowerCase() === lowerAreaName);
-  if (exactMatch && exactMatch !== 'Default') return areaIcons[exactMatch];
+  // Check for direct match or keywords in the map
+  for (const key in areaIconsMap) {
+    if (lowerAreaName.includes(key)) {
+      return areaIconsMap[key];
+    }
+  }
 
-  return areaIcons.Default;
+  return defaultAreaIcon; // Return default if no match
 };
