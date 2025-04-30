@@ -24,6 +24,16 @@ interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
   numberOfMonths?: number;
 }
 
+// Custom formatter to capitalize the first letter of the month caption
+const formatCaption: (date: Date, options?: { locale?: Locale }) => string = (
+  date,
+  options
+) => {
+  const formattedDate = format(date, "MMMM yyyy", { locale: options?.locale });
+  return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+};
+
+
 export function DateRangePicker({
   className,
   date,
@@ -71,6 +81,8 @@ export function DateRangePicker({
             numberOfMonths={numberOfMonths}
             disabled={disabled}
             locale={es} // Pass locale to Calendar
+            // Pass the custom formatter to capitalize the month name
+            formatters={{ formatCaption }}
           />
         </PopoverContent>
       </Popover>
