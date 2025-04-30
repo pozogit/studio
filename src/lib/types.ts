@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import { Briefcase, Factory, Warehouse, Store, Tractor, Laptop, ChefHat, Headset, Building2 } from 'lucide-react'; // Import icons directly
 
 // Updated Shift interface to include start and end times, comments, and location
 export interface Shift {
@@ -8,42 +9,49 @@ export interface Shift {
   area: string;
   startTime: string; // e.g., "09:00"
   endTime: string;   // e.g., "17:00"
-  location: 'Office' | 'Remote'; // Added location field
+  location: 'Oficina' | 'Remoto'; // Changed location field values to Spanish
   comments?: string; // Optional field for comments
 }
 
 
-// Mapping of area names (lowercase keys) to Lucide icons
+// Mapping of area names (lowercase keys in Spanish) to Lucide icons
 // Used by getAreaIcon function
 export const areaIconsMap: Record<string, LucideIcon> = {
-  office: require('lucide-react').Briefcase,
-  factory: require('lucide-react').Factory,
-  warehouse: require('lucide-react').Warehouse,
-  store: require('lucide-react').Store,
-  field: require('lucide-react').Tractor,
-  remote: require('lucide-react').Laptop,
-  kitchen: require('lucide-react').ChefHat,
-  support: require('lucide-react').Headset,
-  shop: require('lucide-react').Store, // Alias for store
-  farm: require('lucide-react').Tractor, // Alias for field
-  home: require('lucide-react').Laptop, // Alias for remote
-  'call center': require('lucide-react').Headset, // Alias for support
-  // Add more specific area names and their icons here
+  oficina: Briefcase,
+  fabrica: Factory, // Corrected Spanish spelling
+  almacen: Warehouse, // Corrected Spanish spelling
+  tienda: Store,
+  campo: Tractor,
+  remoto: Laptop,
+  cocina: ChefHat,
+  soporte: Headset,
+  // Add more specific Spanish area names and their icons here
 };
 
 // Default icon if no specific match is found
-export const defaultAreaIcon: LucideIcon = require('lucide-react').Building2;
+export const defaultAreaIcon: LucideIcon = Building2;
 
 // Function to get an icon based on area name
 export const getAreaIcon = (areaName: string): LucideIcon => {
-  const lowerAreaName = areaName.toLowerCase();
+  const lowerAreaName = areaName.toLowerCase().trim(); // Trim whitespace
 
   // Check for direct match or keywords in the map
   for (const key in areaIconsMap) {
-    if (lowerAreaName.includes(key)) {
+    // Use includes for broader matching, but prioritize exact matches if possible
+    if (lowerAreaName === key || lowerAreaName.includes(key)) {
       return areaIconsMap[key];
     }
   }
+  // Handle common English variations if needed for backward compatibility or mixed input
+  if (lowerAreaName.includes('office')) return Briefcase;
+  if (lowerAreaName.includes('factory')) return Factory;
+  if (lowerAreaName.includes('warehouse')) return Warehouse;
+  if (lowerAreaName.includes('store') || lowerAreaName.includes('shop')) return Store;
+  if (lowerAreaName.includes('field') || lowerAreaName.includes('farm')) return Tractor;
+  if (lowerAreaName.includes('remote') || lowerAreaName.includes('home')) return Laptop;
+  if (lowerAreaName.includes('kitchen')) return ChefHat;
+  if (lowerAreaName.includes('support') || lowerAreaName.includes('call center')) return Headset;
+
 
   return defaultAreaIcon; // Return default if no match
 };

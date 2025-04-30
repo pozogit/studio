@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { format, eachDayOfInterval } from "date-fns";
+import { es } from 'date-fns/locale'; // Import Spanish locale
 import { User, Building2, Clock, MessageSquare, MapPin } from "lucide-react"; // Added MapPin
 import type { DateRange } from "react-day-picker";
 
@@ -23,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DateRangePicker } from "@/components/date-range-picker";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 import type { Shift } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"; // Import RadioGroup
@@ -34,10 +35,13 @@ const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const formSchema = z.object({
   dateRange: z.object({
-      from: z.date({ required_error: "Start date is required." }),
-      to: z.date({ required_error: "End date is required." }),
-    }, { required_error: "Date range is required." }
-  ),
+      from: z.date({invalid_type_error: "Fecha de inicio inválida.", required_error: "Se requiere fecha de inicio."}),
+      to: z.date({invalid_type_error: "Fecha de fin inválida.", required_error: "Se requiere fecha de fin."}),
+    },{ required_error: "Se requiere rango de fechas." }
+  ).refine(data => data.from <= data.to, {
+      message: "La fecha final no puede ser anterior a la fecha de inicio.",
+      path: ["to"], // Attach error to 'to'
+  }),
   area: z.string().min(1, { // Area selection is required
     message: "Por favor selecciona un area.",
   }),
@@ -50,20 +54,17 @@ const formSchema = z.object({
   endTime: z.string().regex(timeRegex, {
     message: "Hora Final posee un formato invalido (HH:MM).",
   }),
-  location: z.enum(['Office', 'Remote'], { // Added location validation
-    required_error: "Please select a location (Office or Remote).",
+  location: z.enum(['Oficina', 'Remoto'], { // Use Spanish enum values
+    required_error: "Por favor selecciona una ubicación (Oficina o Remoto).",
   }),
   comments: z.string().optional(),
-}).refine(data => data.dateRange.from <= data.dateRange.to, {
-  message: "End date cannot be before start date.",
-  path: ["dateRange"],
 }).refine(data => {
     if (data.startTime && data.endTime && timeRegex.test(data.startTime) && timeRegex.test(data.endTime)) {
         return data.startTime < data.endTime;
     }
     return true;
 }, {
-    message: "End time must be after start time.",
+    message: "La hora de fin debe ser posterior a la hora de inicio.",
     path: ["endTime"],
 });
 
@@ -74,13 +75,17 @@ interface ShiftFormProps {
 
 export function ShiftForm({ addShift }: ShiftFormProps) {
   const [availableWorkers, setAvailableWorkers] = React.useState<string[]>([]);
+  const { toast } = useToast(); // Get toast function
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       worker: "",
       area: "",
-      dateRange: undefined,
+      dateRange: { // Initialize with undefined dates
+        from: undefined,
+        to: undefined,
+      },
       startTime: "",
       endTime: "",
       location: undefined, // Default location to undefined initially
@@ -109,10 +114,11 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
   function onSubmit(values: z.infer<typeof formSchema>) {
     const { dateRange, worker, area, startTime, endTime, location, comments } = values; // Include location
 
+    // Additional check, although Zod should handle this
     if (!dateRange.from || !dateRange.to) {
       toast({
           title: "Error",
-          description: "Please select both a start and end date.",
+          description: "Por favor selecciona una fecha de inicio y fin.",
           variant: "destructive", // Use destructive variant for errors
        });
       return;
@@ -141,16 +147,18 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
 
 
     toast({
-      title: "Turno Añadido",
-      description: `${shiftsAddedCount} turno(s) para ${worker} de ${area} (${location}) desde ${format(dateRange.from, 'PPP')} hasta ${format(dateRange.to, 'PPP')} (${startTime} - ${endTime}) fue registrado.`,
+      title: "Turnos Añadidos",
+      description: `${shiftsAddedCount} turno(s) para ${worker} de ${area} (${location}) desde ${format(dateRange.from, 'PPP', { locale: es })} hasta ${format(dateRange.to, 'PPP', { locale: es })} (${startTime} - ${endTime}) registrado(s).`,
       variant: "success", // Use success variant
     });
     form.reset();
     setAvailableWorkers([]); // Reset available workers on successful submit
-    form.setValue('dateRange', undefined);
+    // Explicitly reset dateRange to trigger re-render of DateRangePicker with placeholder
+    form.setValue('dateRange', { from: undefined, to: undefined });
     form.setValue('worker', '');
     form.setValue('area', '');
     form.setValue('location', undefined); // Reset location
+    form.setValue('comments', '');
   }
 
   return (
@@ -161,14 +169,14 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           name="dateRange"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Date Range</FormLabel>
+              <FormLabel>Rango de Fechas</FormLabel>
                <DateRangePicker
                 date={field.value}
-                setDate={field.onChange}
-                placeholder="Select shift start and end date"
+                setDate={(date) => field.onChange(date || { from: undefined, to: undefined })} // Ensure object format
+                placeholder="Selecciona fecha inicio y fin"
               />
               <FormDescription>
-                Select the start and end date for the shifts.
+                Selecciona la fecha de inicio y fin de los turnos.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -182,12 +190,12 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center">
-                 <Building2 className="mr-2 h-4 w-4" /> Area/Department
+                 <Building2 className="mr-2 h-4 w-4" /> Área/Departamento
               </FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                   <FormControl>
                       <SelectTrigger>
-                          <SelectValue placeholder="Select an area" />
+                          <SelectValue placeholder="Selecciona un área" />
                       </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -210,7 +218,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center">
-                <User className="mr-2 h-4 w-4" /> Worker
+                <User className="mr-2 h-4 w-4" /> Trabajador
               </FormLabel>
               <Select
                 onValueChange={field.onChange}
@@ -220,7 +228,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               >
                   <FormControl>
                       <SelectTrigger>
-                          <SelectValue placeholder={!selectedArea ? "Select an area first" : "Select a worker"} />
+                          <SelectValue placeholder={!selectedArea ? "Selecciona un área primero" : "Selecciona un trabajador"} />
                       </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -232,7 +240,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
                           ))
                       ) : (
                           // Optional: Display a message if no workers are available for the selected area
-                          selectedArea && <SelectItem value="-" disabled>No workers found for this area</SelectItem>
+                          selectedArea && <SelectItem value="-" disabled>No se encontraron trabajadores para esta área</SelectItem>
                       )}
                   </SelectContent>
               </Select>
@@ -248,7 +256,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center">
-                     <Clock className="mr-2 h-4 w-4" /> Start Time
+                     <Clock className="mr-2 h-4 w-4" /> Hora Inicio
                   </FormLabel>
                   <FormControl>
                     <Input type="time" placeholder="HH:MM" {...field} />
@@ -263,7 +271,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center">
-                    <Clock className="mr-2 h-4 w-4" /> End Time
+                    <Clock className="mr-2 h-4 w-4" /> Hora Fin
                   </FormLabel>
                   <FormControl>
                     <Input type="time" placeholder="HH:MM" {...field} />
@@ -281,28 +289,28 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           render={({ field }) => (
             <FormItem className="space-y-3">
               <FormLabel className="flex items-center">
-                 <MapPin className="mr-2 h-4 w-4" /> Location
+                 <MapPin className="mr-2 h-4 w-4" /> Ubicación
               </FormLabel>
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value} // Use value from form state
                   className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-4"
                 >
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
-                      <RadioGroupItem value="Office" />
+                      <RadioGroupItem value="Oficina" />
                     </FormControl>
                     <FormLabel className="font-normal">
-                      Office
+                      Oficina
                     </FormLabel>
                   </FormItem>
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
-                      <RadioGroupItem value="Remote" />
+                      <RadioGroupItem value="Remoto" />
                     </FormControl>
                     <FormLabel className="font-normal">
-                      Remote
+                      Remoto
                     </FormLabel>
                   </FormItem>
                 </RadioGroup>
@@ -319,11 +327,11 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center">
-                <MessageSquare className="mr-2 h-4 w-4" /> Comments (Optional)
+                <MessageSquare className="mr-2 h-4 w-4" /> Comentarios (Opcional)
               </FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Add any relevant comments about the shift(s)"
+                  placeholder="Añadir comentarios relevantes sobre el/los turno(s)"
                   className="resize-none"
                   {...field}
                 />
@@ -335,7 +343,7 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
 
 
         <Button type="submit" className="w-full">
-          Register Shifts
+          Registrar Turnos
         </Button>
       </form>
     </Form>
