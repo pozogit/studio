@@ -18,6 +18,7 @@ import { getAreaIcon } from "@/lib/types";
 import { ShiftDetailsModal } from "@/components/shift-details-modal"; // Import the modal component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { allAreas, allWorkers } from "@/lib/data"; // Import default data for filters
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 
 // Use a non-empty value for the 'all' option
@@ -37,6 +38,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
   const [selectedShifts, setSelectedShifts] = React.useState<Shift[]>([]);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const { toast } = useToast(); // Get the toast function
 
   const start = startOfWeek(startOfMonth(currentMonth), { locale: es })
   const end = endOfWeek(endOfMonth(currentMonth), { locale: es })
