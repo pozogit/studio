@@ -25,6 +25,12 @@ import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import { DateRangePicker } from "@/components/date-range-picker"; // Import the new component
 import { toast } from "@/hooks/use-toast";
 import type { Shift } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
+
+// Default options
+const defaultWorkers = ["Alice Smith", "Bob Johnson", "Charlie Brown", "Diana Prince"];
+const defaultAreas = ["Office", "Factory", "Warehouse", "Support", "Remote"];
+
 
 // Time validation regex (HH:MM format)
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -35,11 +41,11 @@ const formSchema = z.object({
       to: z.date({ required_error: "End date is required." }),
     }, { required_error: "Date range is required." }
   ),
-  worker: z.string().min(2, {
-    message: "Worker name must be at least 2 characters.",
+  worker: z.string().min(1, { // Changed min to 1 as it's now a selection
+    message: "Please select a worker.",
   }),
-  area: z.string().min(2, {
-    message: "Area name must be at least 2 characters.",
+  area: z.string().min(1, { // Changed min to 1 as it's now a selection
+    message: "Please select an area.",
   }),
   startTime: z.string().regex(timeRegex, {
     message: "Invalid start time format (HH:MM).",
@@ -72,8 +78,8 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      worker: "",
-      area: "",
+      worker: "", // Initialize as empty, user must select
+      area: "",   // Initialize as empty, user must select
       dateRange: undefined,
       startTime: "", // Initialize time fields
       endTime: "",
@@ -122,6 +128,9 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
     form.reset(); // Reset form after successful submission
      // Manually reset date range as it's a complex object
      form.setValue('dateRange', undefined);
+     // Reset worker and area selects
+     form.setValue('worker', '');
+     form.setValue('area', '');
   }
 
   return (
@@ -153,9 +162,20 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               <FormLabel className="flex items-center">
                 <User className="mr-2 h-4 w-4" /> Worker
               </FormLabel>
-              <FormControl>
-                <Input placeholder="Enter worker name" {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                  <FormControl>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Select a worker" />
+                      </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                      {defaultWorkers.map(workerName => (
+                          <SelectItem key={workerName} value={workerName}>
+                              {workerName}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -168,9 +188,20 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
               <FormLabel className="flex items-center">
                  <Building2 className="mr-2 h-4 w-4" /> Area/Department
               </FormLabel>
-              <FormControl>
-                <Input placeholder="Enter area or department name" {...field} />
-              </FormControl>
+              <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                  <FormControl>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Select an area" />
+                      </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                       {defaultAreas.map(areaName => (
+                          <SelectItem key={areaName} value={areaName}>
+                              {areaName}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
