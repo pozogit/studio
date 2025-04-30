@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import { format } from "date-fns"
+import { es } from 'date-fns/locale'; // Import Spanish locale
 import type { DateRange } from "react-day-picker"
 import { Calendar as CalendarIcon } from "lucide-react"
 
@@ -28,7 +29,7 @@ export function DateRangePicker({
   date,
   setDate,
   disabled,
-  placeholder = "Select date range",
+  placeholder = "Seleccionar rango de fechas", // Default placeholder in Spanish
   numberOfMonths = 2,
 }: DateRangePickerProps) {
   return (
@@ -47,11 +48,13 @@ export function DateRangePicker({
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
+                  {/* Format dates using Spanish locale */}
+                  {format(date.from, "LLL dd, y", { locale: es })} -{" "}
+                  {format(date.to, "LLL dd, y", { locale: es })}
                 </>
               ) : (
-                format(date.from, "LLL dd, y")
+                 // Format single date using Spanish locale
+                format(date.from, "LLL dd, y", { locale: es })
               )
             ) : (
               <span>{placeholder}</span>
@@ -67,9 +70,11 @@ export function DateRangePicker({
             onSelect={setDate}
             numberOfMonths={numberOfMonths}
             disabled={disabled}
+            locale={es} // Pass locale to Calendar
           />
         </PopoverContent>
       </Popover>
     </div>
   )
 }
+

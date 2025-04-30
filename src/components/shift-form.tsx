@@ -174,6 +174,8 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
                 date={field.value}
                 setDate={(date) => field.onChange(date || { from: undefined, to: undefined })} // Ensure object format
                 placeholder="Selecciona fecha inicio y fin"
+                // Pass locale to DateRangePicker if it accepts it, or handle inside if needed
+                // For now, assuming DateRangePicker itself uses the global locale setting or relies on Calendar
               />
               <FormDescription>
                 Selecciona la fecha de inicio y fin de los turnos.
@@ -349,3 +351,4 @@ export function ShiftForm({ addShift }: ShiftFormProps) {
     </Form>
   );
 }
+

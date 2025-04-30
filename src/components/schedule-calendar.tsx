@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval, addMonths, subMonths, getDay, startOfWeek, endOfWeek, getMonth } from "date-fns"
-// import { es } from 'date-fns/locale' // Removed Spanish locale import
+import { es } from 'date-fns/locale' // Import Spanish locale
 import { ChevronLeft, ChevronRight, User, Building2, Filter, X, Clock, FileSpreadsheet, MessageSquare, MapPin } from "lucide-react" // Added MapPin
 import * as XLSX from 'xlsx'; // Import xlsx library
 
@@ -29,8 +29,8 @@ interface ScheduleCalendarProps {
   setShifts: (shifts: Shift[]) => void; // Function to update the main shifts state
 }
 
-// Changed order to start from Monday
-const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']; // Spanish day names starting Monday
+// Changed order to start from Monday, Spanish day names
+const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps) {
   const [currentMonth, setCurrentMonth] = React.useState(new Date())
@@ -225,7 +225,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
 
 
         // 5. Generate filename
-        const fileName = `shiftmaster_horario_${format(currentMonth, "yyyy-MM")}_por_area.xlsx`; // Removed locale
+        const fileName = `shiftmaster_horario_${format(currentMonth, "yyyy-MM", { locale: es })}_por_area.xlsx`; // Use locale for consistency
 
         // 6. Trigger download
         XLSX.writeFile(wb, fileName);
@@ -244,9 +244,9 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 pb-4">
          <div className="flex flex-col space-y-1">
              <CardTitle className="text-2xl font-bold text-primary">
-                {/* Use standard casing for month and year */}
+                {/* Use standard casing for month and year with Spanish locale */}
                 {/* Capitalize first letter of month */}
-                 {format(currentMonth, "MMMM yyyy").charAt(0).toUpperCase() + format(currentMonth, "MMMM yyyy").slice(1)}
+                 {format(currentMonth, "MMMM yyyy", { locale: es }).charAt(0).toUpperCase() + format(currentMonth, "MMMM yyyy", { locale: es }).slice(1)}
              </CardTitle>
              <span className="text-sm text-muted-foreground">Vista Calendario</span>
          </div>
@@ -329,8 +329,8 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                   className={`relative border rounded-md p-2 min-h-[120px] transition-colors duration-200 ease-in-out flex flex-col ${ /* Increased min-height slightly */
                     isCurrentMonth ? 'bg-card hover:bg-secondary/80 cursor-pointer' : 'bg-muted/50 text-muted-foreground'
                   } ${isSameDay(day, new Date()) ? 'ring-2 ring-primary' : ''} ${!isCurrentMonth || dayShiftsDisplay.length === 0 ? 'opacity-70' : ''}` /* Fade if no shifts match filter */}
-                  // Updated aria-label to show filtered count / total count
-                  aria-label={`Día ${format(day, 'd')}, ${dayShiftsDisplay.length}/${totalShiftsForDay} turnos (${filterType !== 'none' && filterValue ? `filtrado por ${filterType} '${filterValue}'` : 'sin filtro'})`}
+                  // Updated aria-label to show filtered count / total count (in Spanish)
+                  aria-label={`Día ${format(day, 'd')}, ${dayShiftsDisplay.length}/${totalShiftsForDay} turnos ${filterType !== 'none' && filterValue ? `(filtrado por ${filterType === 'worker' ? 'trabajador' : 'área'} '${filterValue}')` : '(sin filtro)'}`}
                 >
                   <div className={`font-medium text-sm mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/70'}`}>{format(day, "d")}</div>
                   {/* Display shifts from the filtered list */}
@@ -339,10 +339,10 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                        <div className="space-y-1 text-xs">
                         {dayShiftsDisplay.map(shift => {
                            const SpecificAreaIcon = getAreaIcon(shift.area);
-                           // Improved tooltip content generation
+                           // Improved tooltip content generation (in Spanish)
                            let tooltipLines = [
                              `${shift.worker} (${shift.startTime || 'N/A'}-${shift.endTime || 'N/A'}) en ${shift.area}`,
-                             `Ubicación: ${shift.location || 'N/A'}`, // Add location to tooltip
+                             `Ubicación: ${shift.location === 'Remoto' ? 'Remoto' : 'Oficina'}`, // Display Spanish location name
                            ];
                            if (shift.comments) {
                              // Add comments, truncate if too long for a simple tooltip line
@@ -362,7 +362,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
                                   <span className="font-semibold mr-1 truncate">{shift.worker}:</span>
                                   <span className="text-muted-foreground">{shift.startTime || '?'}</span>
                                    {shift.comments && <MessageSquare className="h-3 w-3 ml-1 shrink-0 text-blue-400" />} {/* Icon for comments */}
-                                   {shift.location === 'Remote' && <MapPin className="h-3 w-3 ml-1 shrink-0 text-purple-400" />} {/* Icon for remote location */}
+                                   {shift.location === 'Remoto' && <MapPin className="h-3 w-3 ml-1 shrink-0 text-purple-400" />} {/* Icon for remote location */}
                                 </Badge>
                               </TooltipTrigger>
                               <TooltipContent className="whitespace-pre-line max-w-xs"> {/* Allow wrapping and set max width */}
