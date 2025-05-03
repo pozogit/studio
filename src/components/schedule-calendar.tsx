@@ -1,7 +1,8 @@
+
 "use client"
 
 import * as React from "react"
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval, addMonths, subMonths, getDay, startOfWeek, endOfWeek, getMonth, startOfDay, endOfDay, addDays, getWeek } from "date-fns"
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isWithinInterval, addMonths, subMonths, getDay, startOfWeek, endOfWeek, getMonth, startOfDay, endOfDay, addDays, getWeek, subDays } from "date-fns" // Added subDays
 import { es } from 'date-fns/locale' // Import Spanish locale
 import { ChevronLeft, ChevronRight, User, Building2, Filter, X, Clock, FileSpreadsheet, MessageSquare, MapPin, CalendarDays, List, Check } from "lucide-react" // Added MapPin, CalendarDays, List, Check
 import * as XLSX from 'xlsx'; // Import xlsx library
@@ -93,10 +94,10 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         setCurrentDate(subMonths(currentDate, 1));
         break;
       case 'weekly':
-        setCurrentDate(subMonths(currentDate, 0.25)); // Approx. 1 week
+        setCurrentDate(subDays(currentDate, 7)); // Subtract 7 days for previous week
         break;
       case 'daily':
-        setCurrentDate(addDays(currentDate, -1));
+        setCurrentDate(subDays(currentDate, 1)); // Use subDays for consistency
         break;
     }
   };
@@ -108,7 +109,7 @@ export function ScheduleCalendar({ allShifts, setShifts }: ScheduleCalendarProps
         setCurrentDate(addMonths(currentDate, 1));
         break;
       case 'weekly':
-        setCurrentDate(addMonths(currentDate, 0.25)); // Approx. 1 week
+        setCurrentDate(addDays(currentDate, 7)); // Add 7 days for next week
         break;
       case 'daily':
         setCurrentDate(addDays(currentDate, 1));
